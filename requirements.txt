@@ -1,0 +1,10 @@
+# Collector
+requests>=2.28.0
+
+# Image → time series (freqgauge_extract.py)
+numpy>=1.24.0
+opencv-python>=4.8.0
+pandas>=2.0.0
+
+# CSV viewer (freqgauge_view_csv.py)
+matplotlib>=3.7.0

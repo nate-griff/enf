@@ -92,7 +92,55 @@ sudo journalctl -u freqgauge-collector -f
 <details>
 <summary>Processing the Images</summary>
 
-### Plot Details
+### Extract traces to CSV (`freqgauge_extract.py`)
+
+Install image stack into the same venv you use for scraping:
+
+```powershell
+.\.venv\Scripts\pip.exe install -r requirements.txt
+```
+
+One image (one row per x-column × four regions):
+
+```powershell
+.\.venv\Scripts\python.exe freqgauge_extract.py `
+  --input testdata\freqgauge_2026-03-20T22-39-56.541331Z.png `
+  --output out\sample.csv
+```
+
+Whole tree (recursive `freqgauge_*.png` / `.jpg`, including `YYYY-MM-DD` day folders from the collector). With **two or more** images, `--dedupe-ms` bins timestamps and averages `frequency_hz` for overlapping windows:
+
+```powershell
+.\.venv\Scripts\python.exe freqgauge_extract.py `
+  --input path\to\images `
+  --output out\merged.csv `
+  --dedupe-ms 1000
+```
+
+**Debug overlays** (cropped plot + binary mask side‑by‑side) to tune color detection and margins:
+
+```powershell
+.\.venv\Scripts\python.exe freqgauge_extract.py `
+  --input testdata\some.png `
+  --debug-dir out\debug
+```
+
+Useful flags: `--window-seconds` (default 55), `--skip-shape-check` if resolution changes, `--morphology 0` to disable mask cleanup. CSV columns are `timestamp_utc`, `region`, `frequency_hz` by default; add `--verbose-csv` to include `pixel_x` and `source_path`.
+
+**Time axis:** columns map linearly from `(capture_time − window)` on the left to `capture_time` on the right, using the UTC timestamp in the filename. **Frequency:** 59.95 Hz at the bottom of the inner plot, 60.05 Hz at the top (`FREQ_MIN_HZ` / `FREQ_MAX_HZ` in the script).
+
+### View extracted CSV (`freqgauge_view_csv.py`)
+
+Requires `matplotlib` (included in `requirements.txt`). The viewer expects columns `timestamp_utc`, `region`, and `frequency_hz` (extra columns such as `pixel_x` / `source_path` are ignored).
+
+```powershell
+.\.venv\Scripts\python.exe freqgauge_view_csv.py
+.\.venv\Scripts\python.exe freqgauge_view_csv.py out\merged.csv
+```
+
+Use **Open CSV** (or pass a path on the command line), pick **one region** at a time, set **time zoom** with the **dropdown** (common widths), the **log-scale width slider**, and/or **−** / **+**. The dropdown switches to **Custom** when the slider doesn’t match a preset. **Scroll time** moves the visible window along the UTC axis. **Reset view** shows the full time range.
+
+### Plot Details (calibration)
 **Regions** 
 ```
 PLOT_REGIONS = {
