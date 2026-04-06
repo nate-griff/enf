@@ -1,5 +1,75 @@
 # enf
 Electric Network Frequency Analysis tool
+
+## Overview
+
+This repository is for a local Electric Network Frequency analysis tool focused on matching media against known grid-frequency behavior. The goal is to take an audio or video file, isolate its ENF content around 60 Hz, and compare that fluctuation pattern against recorded reference data from one of four North American grids:
+
+- EI
+- WECC
+- ERCOT
+- Quebec
+
+The project is being developed as a research-oriented investigative aid. It is meant to help narrow down plausible candidate time windows for human review, not to serve as a standalone proof system.
+
+## Current State
+
+The repository already contains the upstream reference-data pipeline:
+
+- Continuous collection of FNET frequency gauge images.
+- Extraction of regional frequency traces from those images into CSV.
+- A GUI viewer for exploring extracted CSV data by region with scroll and zoom controls.
+
+This means the current codebase already supports reference-data collection and inspection. The main work still ahead is building the media-side ENF extraction, comparison logic, and unified analysis workflow.
+
+## Planned Tool Direction
+
+The expected project direction is:
+
+1. Keep collecting and merging reference grid data from the existing image pipeline.
+2. Add support for ingesting local audio and video files.
+3. Extract ENF-relevant waveform data from those media files.
+4. Compare the extracted waveform against a selected grid's reference data.
+5. Score and rank the best candidate matches.
+6. Provide both CLI-driven results and a GUI workflow for visual inspection.
+
+The CLI is expected to come first. The GUI will follow as a comparison and inspection tool that can overlay the query waveform against top candidate matches and support scrollable, zoomable review.
+
+## Expected CLI Scope
+
+The planned CLI should eventually be able to:
+
+- Accept an input audio or video file.
+- Extract audio from video internally.
+- Select one of the four supported grids.
+- Return the top matching candidate windows.
+- Support an optional top-N output count, defaulting to 3.
+- Support an optional score or accuracy threshold cutoff.
+- Export structured results.
+- Optionally export an image showing overlapping waveforms.
+
+## Matching Approach
+
+The exact matching algorithm is still an open project task. The current plan is to compare several candidate methods before choosing the initial matcher. The score is expected to combine:
+
+- Percent of the query waveform that stays within a configurable Hz threshold of the reference waveform.
+- Shape similarity between the query and candidate reference window.
+
+This part of the project is still under active design and will likely evolve as more recordings and test cases become available.
+
+## Roadmap Summary
+
+The near-term roadmap is:
+
+1. Normalize and merge the reference CSV data.
+2. Build query-side ENF extraction from audio and video.
+3. Run algorithm comparison across candidate matching methods.
+4. Build the first CLI matcher.
+5. Add evaluation workflows and output artifacts.
+6. Build the waveform comparison GUI.
+
+More detailed planning lives in `Project-Plan.md`.
+
 ## Data Sources
 Data was scraped from FNET's live grid data
 <details>
