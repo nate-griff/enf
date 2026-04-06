@@ -1,5 +1,5 @@
 # enf
-Electric Network Frequency Analysis tool for Autopsy
+Electric Network Frequency Analysis tool
 ## Data Sources
 Data was scraped from FNET's live grid data
 <details>
@@ -125,7 +125,7 @@ Whole tree (recursive `freqgauge_*.png` / `.jpg`, including `YYYY-MM-DD` day fol
   --debug-dir out\debug
 ```
 
-Useful flags: `--window-seconds` (default 55), `--skip-shape-check` if resolution changes, `--morphology 0` to disable mask cleanup. CSV columns are `timestamp_utc`, `region`, `frequency_hz` by default; add `--verbose-csv` to include `pixel_x` and `source_path`.
+Useful flags: `--window-seconds` (default 55), `--skip-shape-check` if resolution changes, `--morphology 0` to disable mask cleanup. For large batches, `-j` / `--jobs N` runs extraction in **N parallel processes** (default 1); try 4–8 on a multi-core machine—each worker holds one full image in RAM, and `--debug-dir` still runs sequentially after the pool finishes. CSV columns are `timestamp_utc`, `region`, `frequency_hz` by default; add `--verbose-csv` to include `pixel_x` and `source_path`.
 
 **Time axis:** columns map linearly from `(capture_time − window)` on the left to `capture_time` on the right, using the UTC timestamp in the filename. **Frequency:** 59.95 Hz at the bottom of the inner plot, 60.05 Hz at the top (`FREQ_MIN_HZ` / `FREQ_MAX_HZ` in the script).
 

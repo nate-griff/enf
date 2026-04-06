@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import re
 import time
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -186,6 +187,27 @@ class ExtractConfig:
     window_seconds: float = DEFAULT_WINDOW_SECONDS
     skip_shape_check: bool = False
     morphology_ksize: int = 2
+
+
+def _extract_one_worker(
+    path_str: str,
+    window_seconds: float,
+    skip_shape_check: bool,
+    morphology_ksize: int,
+) -> tuple[str, str | None, pd.DataFrame | None, float]:
+    """Picklable entry point for process pools (Windows spawn)."""
+    cfg = ExtractConfig(
+        window_seconds=window_seconds,
+        skip_shape_check=skip_shape_check,
+        morphology_ksize=morphology_ksize,
+    )
+    t0 = time.perf_counter()
+    p = Path(path_str)
+    try:
+        df = extract_image(p, cfg)
+    except ValueError as e:
+        return path_str, str(e), None, time.perf_counter() - t0
+    return path_str, None, df, time.perf_counter() - t0
 
 
 def extract_image(
@@ -373,11 +395,23 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Include pixel_x and source_path columns in CSV / printed preview.",
     )
+    p.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        default=1,
+        metavar="N",
+        help="Parallel extraction across N processes (default 1 = sequential). "
+        "Use 4–8 on a multi-core PC; each worker loads a full image into RAM.",
+    )
     return p.parse_args()
 
 
 def main() -> int:
     args = parse_args()
+    if args.jobs < 1:
+        print("--jobs must be >= 1", flush=True)
+        return 2
     cfg = ExtractConfig(
         window_seconds=args.window_seconds,
         skip_shape_check=args.skip_shape_check,
@@ -398,25 +432,61 @@ def main() -> int:
         f"Found {len(paths)} image(s); input {args.input.resolve()}",
         flush=True,
     )
+    if args.jobs > 1:
+        print(f"Using {min(args.jobs, len(paths))} worker process(es)", flush=True)
     run_t0 = time.perf_counter()
     dfs: list[pd.DataFrame] = []
     skipped = 0
-    for i, img_path in enumerate(paths, start=1):
-        print(f"[{i}/{len(paths)}] {img_path.name}", flush=True)
-        t0 = time.perf_counter()
-        try:
-            df = extract_image(img_path, cfg)
-            dfs.append(df)
-        except ValueError as e:
-            skipped += 1
-            print(f"  skipped: {e}", flush=True)
-            continue
-        dt = time.perf_counter() - t0
-        print(f"  rows={len(df)} in {dt:.2f}s", flush=True)
+
+    if args.jobs == 1:
+        for i, img_path in enumerate(paths, start=1):
+            print(f"[{i}/{len(paths)}] {img_path.name}", flush=True)
+            t0 = time.perf_counter()
+            try:
+                df = extract_image(img_path, cfg)
+                dfs.append(df)
+            except ValueError as e:
+                skipped += 1
+                print(f"  skipped: {e}", flush=True)
+                continue
+            dt = time.perf_counter() - t0
+            print(f"  rows={len(df)} in {dt:.2f}s", flush=True)
+            if args.debug_dir is not None:
+                t1 = time.perf_counter()
+                write_debug_overlays(img_path, args.debug_dir, cfg)
+                print(f"  debug overlays in {time.perf_counter() - t1:.2f}s", flush=True)
+    else:
+        workers = min(args.jobs, len(paths))
+        wsec = cfg.window_seconds
+        sk = cfg.skip_shape_check
+        mk = cfg.morphology_ksize
+        debug_paths: list[Path] = []
+        with ProcessPoolExecutor(max_workers=workers) as ex:
+            futures = [
+                ex.submit(_extract_one_worker, str(p), wsec, sk, mk) for p in paths
+            ]
+            done = 0
+            for fut in as_completed(futures):
+                done += 1
+                path_str, skip_reason, df, dt = fut.result()
+                name = Path(path_str).name
+                print(f"[{done}/{len(paths)}] {name}", flush=True)
+                if skip_reason is not None:
+                    skipped += 1
+                    print(f"  skipped: {skip_reason}", flush=True)
+                    continue
+                assert df is not None
+                dfs.append(df)
+                debug_paths.append(Path(path_str))
+                print(f"  rows={len(df)} in {dt:.2f}s", flush=True)
         if args.debug_dir is not None:
-            t1 = time.perf_counter()
-            write_debug_overlays(img_path, args.debug_dir, cfg)
-            print(f"  debug overlays in {time.perf_counter() - t1:.2f}s", flush=True)
+            for img_path in debug_paths:
+                t1 = time.perf_counter()
+                write_debug_overlays(img_path, args.debug_dir, cfg)
+                print(
+                    f"  debug overlays {img_path.name} in {time.perf_counter() - t1:.2f}s",
+                    flush=True,
+                )
 
     print(
         f"Processed {len(paths)} file(s) in {time.perf_counter() - run_t0:.1f}s "
