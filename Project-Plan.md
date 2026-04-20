@@ -171,16 +171,7 @@ Evaluation criteria for algorithm comparison:
 
 ### Packaging strategy
 
-The first implementation can remain script-oriented if that speeds progress, but the repository should be reorganized into a cleaner package layout early so the CLI, signal processing, reference data management, and GUI code do not become tangled.
-
-Recommended internal structure:
-
-- `enf/cli/`
-- `enf/reference/`
-- `enf/extract/`
-- `enf/match/`
-- `enf/gui/`
-- `tests/`
+This is an academic project, so it shouldn't be too many files. I want to just run it as python {filename} rather than a full packaged product. There should be a few scripts, such as the CLI, the GUI, the collection service, and the extraction service. This will probably make the files much longer, but that's ok since I want it to be a simpler to understand filestructure for non developers. 
 
 ## Reuse Of Existing Work
 
@@ -189,6 +180,8 @@ The current repository already contains valuable pieces that should be reused ra
 - The ImageExtraction pipeline already collects and extracts reference grid data.
 - The CSV viewer already demonstrates a practical scroll and zoom interaction model.
 - Existing argparse-based scripts show a workable CLI style for local tools.
+- A months worth of image extraction data already exists in source_data (both the images and the CSVs).
+- An audio recording from today (4/20/26 at 12:36 EST) is about 5 minutes of a recording next to a fan that should have grid ENF artifacts.
 
 This means the project is not starting from zero. The main missing layers are:
 
