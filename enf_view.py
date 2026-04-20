@@ -63,11 +63,22 @@ def load_grid_window(
     region: str,
     start_utc: datetime,
     end_utc: datetime,
-) -> pd.DataFrame:
-    """Load grid data for a time window, returning (offset_seconds, frequency_hz)."""
-    # Determine which daily CSVs might cover the range
-    start_date = start_utc.date()
-    end_date = end_utc.date()
+    expand_hours: float = 0.5,
+) -> tuple[pd.DataFrame, datetime, datetime]:
+    """Load grid data for a time window with optional expansion buffer.
+    
+    Returns: (df, actual_start_utc, actual_end_utc) where the dataframe has
+    (offset_seconds, frequency_hz) with offset relative to actual_start_utc.
+    The expand_hours parameter adds a buffer before start_utc and after end_utc.
+    """
+    from datetime import timedelta
+    
+    # Expand the requested window to load more context around the match
+    expanded_start = start_utc - timedelta(hours=expand_hours)
+    expanded_end = end_utc + timedelta(hours=expand_hours)
+    
+    start_date = expanded_start.date()
+    end_date = expanded_end.date()
     csvs: list[Path] = []
     current = start_date
     while current <= end_date:
@@ -80,7 +91,7 @@ def load_grid_window(
         csvs = sorted(grid_dir.glob("*.csv"))
 
     if not csvs:
-        return pd.DataFrame(columns=["offset_seconds", "frequency_hz"])
+        return pd.DataFrame(columns=["offset_seconds", "frequency_hz"]), expanded_start, expanded_end
 
     frames: list[pd.DataFrame] = []
     for csv_path in csvs:
@@ -95,23 +106,29 @@ def load_grid_window(
         frames.append(df[["timestamp_utc", "frequency_hz"]])
 
     if not frames:
-        return pd.DataFrame(columns=["offset_seconds", "frequency_hz"])
+        return pd.DataFrame(columns=["offset_seconds", "frequency_hz"]), expanded_start, expanded_end
 
     combined = pd.concat(frames, ignore_index=True)
     combined = combined.dropna(subset=["frequency_hz"]).sort_values("timestamp_utc")
 
-    # Filter to the requested window
-    start_ts = pd.Timestamp(start_utc)
-    end_ts = pd.Timestamp(end_utc)
+    # Filter to the expanded window
+    start_ts = pd.Timestamp(expanded_start)
+    end_ts = pd.Timestamp(expanded_end)
     mask = (combined["timestamp_utc"] >= start_ts) & (combined["timestamp_utc"] <= end_ts)
     window = combined.loc[mask].copy()
 
     if window.empty:
-        return pd.DataFrame(columns=["offset_seconds", "frequency_hz"])
+        return pd.DataFrame(columns=["offset_seconds", "frequency_hz"]), expanded_start, expanded_end
 
+    # Use the earliest available data point as t0
     t0 = window["timestamp_utc"].iloc[0]
+    # Convert Timestamp to datetime (nanosecond precision loss is acceptable)
+    actual_start = t0.to_pydatetime()
+    actual_end_ts = window["timestamp_utc"].iloc[-1]
+    actual_end = actual_end_ts.to_pydatetime()
+    
     window["offset_seconds"] = (window["timestamp_utc"] - t0).dt.total_seconds()
-    return window[["offset_seconds", "frequency_hz"]].reset_index(drop=True)
+    return window[["offset_seconds", "frequency_hz"]].reset_index(drop=True), actual_start, actual_end
 
 
 # ---------------------------------------------------------------------------
@@ -140,6 +157,13 @@ class ENFViewer(tk.Tk):
         self._ref_df: pd.DataFrame | None = None
         self._matches: list[dict] = []
         self._current_match_idx: int = 0
+
+        # Grid bounds (full available range with buffer)
+        self._grid_bounds: tuple[datetime, datetime] | None = None
+        # Match bounds (for highlighting the matched region)
+        self._match_bounds: tuple[datetime, datetime] | None = None
+        # Trace alignment offset (seconds to add to trace offset_seconds to align with grid)
+        self._trace_offset_shift: float = 0.0
 
         # View state
         self._total_seconds: float = 1.0
@@ -195,9 +219,10 @@ class ENFViewer(tk.Tk):
 
         ttk.Label(zoom_row, text="Zoom:").pack(side=tk.LEFT)
         self._zoom_slider = ttk.Scale(
-            zoom_row, from_=0.0, to=1.0, orient=tk.HORIZONTAL, command=self._on_zoom,
+            zoom_row, from_=0.0, to=1.0, orient=tk.HORIZONTAL,
         )
         self._zoom_slider.set(1.0)
+        self._zoom_slider.config(command=self._on_zoom)
         self._zoom_slider.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
         ttk.Label(zoom_row, text="(narrow ← → full)").pack(side=tk.LEFT)
 
@@ -280,6 +305,7 @@ class ENFViewer(tk.Tk):
             return
         self._total_seconds = float(self._trace_df["offset_seconds"].max() - self._trace_df["offset_seconds"].min())
         self._total_seconds = max(self._total_seconds, MIN_WINDOW_SEC)
+        self._trace_offset_shift = 0.0  # No shift when loading trace standalone
         self._reset_view()
         self._redraw()
         self._status.config(text=f"Trace: {path.name}  |  {len(self._trace_df)} points")
@@ -325,8 +351,11 @@ class ENFViewer(tk.Tk):
         score = match.get("composite_score", 0.0)
         self._score_label.config(text=f"Score: {score:.3f} (r={corr:.3f}, cov={cov * 100:.0f}%)")
 
-        # Load reference window
+        # Load reference window with buffer for scrolling context
         self._ref_df = None
+        self._grid_bounds = None
+        self._match_bounds = None
+        self._trace_offset_shift = 0.0
         if self._grid_dir and self._region:
             start_str = match.get("ref_start_utc")
             end_str = match.get("ref_end_utc")
@@ -334,7 +363,18 @@ class ENFViewer(tk.Tk):
                 try:
                     start_utc = datetime.fromisoformat(start_str)
                     end_utc = datetime.fromisoformat(end_str)
-                    self._ref_df = load_grid_window(self._grid_dir, self._region, start_utc, end_utc)
+                    self._match_bounds = (start_utc, end_utc)
+                    # Load with 30-minute buffer before/after match
+                    self._ref_df, grid_start, grid_end = load_grid_window(
+                        self._grid_dir, self._region, start_utc, end_utc, expand_hours=0.5
+                    )
+                    self._grid_bounds = (grid_start, grid_end)
+                    
+                    # Calculate alignment: trace starts at ref_start_utc, so shift its offset_seconds
+                    # by the time between grid start and match start
+                    grid_start_ts = pd.Timestamp(grid_start)
+                    match_start_ts = pd.Timestamp(start_utc)
+                    self._trace_offset_shift = (match_start_ts - grid_start_ts).total_seconds()
                 except Exception:
                     self._ref_df = None
 
@@ -427,14 +467,40 @@ class ENFViewer(tk.Tk):
 
         start_sec, end_sec = self._view_range_seconds()
 
+        # Highlight the matched time region if available
+        if self._grid_bounds and self._match_bounds and has_ref:
+            try:
+                grid_start, grid_end = self._grid_bounds
+                match_start, match_end = self._match_bounds
+                
+                # Convert match times to offset_seconds
+                grid_start_ts = pd.Timestamp(grid_start)
+                match_start_ts = pd.Timestamp(match_start)
+                match_end_ts = pd.Timestamp(match_end)
+                
+                match_start_sec = (match_start_ts - grid_start_ts).total_seconds()
+                match_end_sec = (match_end_ts - grid_start_ts).total_seconds()
+                
+                # Only show highlight if it overlaps with view
+                if match_end_sec > start_sec and match_start_sec < end_sec:
+                    self._ax.axvspan(
+                        match_start_sec, match_end_sec,
+                        alpha=0.15, color="green", label="Match window"
+                    )
+            except Exception:
+                pass
+
         # Plot query trace
         if has_trace:
             assert self._trace_df is not None
+            # Apply the alignment shift to trace offset_seconds
+            trace_aligned = self._trace_df.copy()
+            trace_aligned["offset_seconds"] = trace_aligned["offset_seconds"] + self._trace_offset_shift
             mask = (
-                (self._trace_df["offset_seconds"] >= start_sec)
-                & (self._trace_df["offset_seconds"] <= end_sec)
+                (trace_aligned["offset_seconds"] >= start_sec)
+                & (trace_aligned["offset_seconds"] <= end_sec)
             )
-            sub = self._trace_df.loc[mask]
+            sub = trace_aligned.loc[mask]
             if not sub.empty:
                 self._ax.plot(
                     sub["offset_seconds"], sub["frequency_hz"],
@@ -464,11 +530,13 @@ class ENFViewer(tk.Tk):
         y_vals: list[float] = []
         if has_trace:
             assert self._trace_df is not None
+            trace_aligned = self._trace_df.copy()
+            trace_aligned["offset_seconds"] = trace_aligned["offset_seconds"] + self._trace_offset_shift
             mask_t = (
-                (self._trace_df["offset_seconds"] >= start_sec)
-                & (self._trace_df["offset_seconds"] <= end_sec)
+                (trace_aligned["offset_seconds"] >= start_sec)
+                & (trace_aligned["offset_seconds"] <= end_sec)
             )
-            y_vals.extend(self._trace_df.loc[mask_t, "frequency_hz"].tolist())
+            y_vals.extend(trace_aligned.loc[mask_t, "frequency_hz"].tolist())
         if has_ref:
             assert self._ref_df is not None
             mask_r = (
