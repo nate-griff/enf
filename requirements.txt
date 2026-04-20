@@ -8,3 +8,6 @@ pandas>=2.0.0
 
 # CSV viewer (freqgauge_view_csv.py)
 matplotlib>=3.7.0
+
+# ENF extraction and comparison (enf_extract.py, enf_compare.py)
+scipy>=1.11.0
