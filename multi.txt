@@ -1,1 +1,9 @@
 .\.venv\Scripts\python.exe .\freqgauge_extract.py --input .\images\2026-03-21\ --output Z:\Nathan\FNetData\rawdata\2026-03-21.csv -j 10 --dedupe-ms 1000; .\.venv\Scripts\python.exe .\freqgauge_extract.py --input .\images\2026-03-22\ --output Z:\Nathan\FNetData\rawdata\2026-03-22.csv -j 10 --dedupe-ms 1000; .\.venv\Scripts\python.exe .\freqgauge_extract.py --input .\images\2026-03-23\ --output Z:\Nathan\FNetData\rawdata\2026-03-23.csv -j 10 --dedupe-ms 1000; .\.venv\Scripts\python.exe .\freqgauge_extract.py --input .\images\2026-03-24\ --output Z:\Nathan\FNetData\rawdata\2026-03-24.csv -j 10 --dedupe-ms 1000
+
+$start = [datetime]"2026-04-03"
+$end   = [datetime]"2026-04-19"
+
+for ($d = $start; $d -le $end; $d = $d.AddDays(1)) {
+    $date = $d.ToString("yyyy-MM-dd")
+    .\.venv\Scripts\python.exe .\enf\extract\freqgauge_extract.py --input .\ImageExtraction\images\$date\ --output Z:\Nathan\FNetData\rawdata\$date.csv -j 10 --dedupe-ms 1000
+}

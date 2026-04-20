@@ -1,0 +1,53 @@
+{
+  "trace_file": "source_data\\video_samples\\YoutubeLivestream\\townhall.csv",
+  "region": "EI",
+  "threshold_hz": 0.01,
+  "query_length_seconds": 1204,
+  "matches": [
+    {
+      "rank": 1,
+      "ref_start_utc": "2026-04-07T19:47:27+00:00",
+      "ref_end_utc": "2026-04-07T20:07:30+00:00",
+      "correlation": 0.204813,
+      "threshold_coverage": 0.082226,
+      "composite_score": 0.155778,
+      "ref_offset_index": 1541151
+    },
+    {
+      "rank": 2,
+      "ref_start_utc": "2026-04-07T19:47:28+00:00",
+      "ref_end_utc": "2026-04-07T20:07:31+00:00",
+      "correlation": 0.200915,
+      "threshold_coverage": 0.085548,
+      "composite_score": 0.154768,
+      "ref_offset_index": 1541152
+    },
+    {
+      "rank": 3,
+      "ref_start_utc": "2026-04-07T19:47:23+00:00",
+      "ref_end_utc": "2026-04-07T20:07:26+00:00",
+      "correlation": 0.194046,
+      "threshold_coverage": 0.095515,
+      "composite_score": 0.154634,
+      "ref_offset_index": 1541147
+    },
+    {
+      "rank": 4,
+      "ref_start_utc": "2026-04-07T19:47:26+00:00",
+      "ref_end_utc": "2026-04-07T20:07:29+00:00",
+      "correlation": 0.202297,
+      "threshold_coverage": 0.083056,
+      "composite_score": 0.154601,
+      "ref_offset_index": 1541150
+    },
+    {
+      "rank": 5,
+      "ref_start_utc": "2026-04-07T19:47:33+00:00",
+      "ref_end_utc": "2026-04-07T20:07:36+00:00",
+      "correlation": 0.199666,
+      "threshold_coverage": 0.086379,
+      "composite_score": 0.154351,
+      "ref_offset_index": 1541157
+    }
+  ]
+}
