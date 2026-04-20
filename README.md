@@ -291,7 +291,7 @@ From the project plan:
 - Forensic-grade confidence metrics
 - GPU-accelerated matching for large datasets
 
-## Data Sources
+## Data Sources (Details)
 Data was scraped from FNET's live grid data
 <details>
 <summary>Scraping the Images</summary>
