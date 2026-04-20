@@ -3,72 +3,293 @@ Electric Network Frequency Analysis tool
 
 ## Overview
 
-This repository is for a local Electric Network Frequency analysis tool focused on matching media against known grid-frequency behavior. The goal is to take an audio or video file, isolate its ENF content around 60 Hz, and compare that fluctuation pattern against recorded reference data from one of four North American grids:
+This repository contains a local Electric Network Frequency (ENF) analysis tool that extracts ENF signatures from audio and video recordings, then compares them against known grid-frequency reference data from one of four North American grids:
 
-- EI
-- WECC
-- ERCOT
-- Quebec
+- **EI** (Eastern Interconnection)
+- **WECC** (Western Electricity Coordinating Council)
+- **ERCOT** (Electric Reliability Council of Texas)
+- **Quebec**
 
-The project is being developed as a research-oriented investigative aid. It is meant to help narrow down plausible candidate time windows for human review, not to serve as a standalone proof system.
+The tool is research-oriented and designed as an investigative aid to narrow down plausible time windows for human review, not as a standalone proof system.
 
-## Current State
+## Quick Start
 
-The repository already contains the upstream reference-data pipeline:
+### Setup
+```bash
+# Create and activate virtual environment
+python -m venv .venv
+.\.venv\Scripts\activate          # Windows
+source .venv/bin/activate         # Linux/macOS
 
-- Continuous collection of FNET frequency gauge images.
-- Extraction of regional frequency traces from those images into CSV.
-- A GUI viewer for exploring extracted CSV data by region with scroll and zoom controls.
+# Install dependencies
+pip install -r requirements.txt
+```
 
-This means the current codebase already supports reference-data collection and inspection. The main work still ahead is building the media-side ENF extraction, comparison logic, and unified analysis workflow.
+### Basic Workflow
 
-## Planned Tool Direction
+**1. Extract ENF from audio/video:**
+```bash
+python enf_extract.py --input recording.wav --output trace.csv
+python enf_extract.py --input recording.mp4 --output trace.csv  # video auto-converts
+```
 
-The expected project direction is:
+**2. Compare against grid reference data:**
+```bash
+python enf_compare.py \
+  --trace trace.csv \
+  --grid-dir source_data/grid_data \
+  --region EI \
+  --date 2026-04-20 \
+  --top-n 5 \
+  --plot
+```
 
-1. Keep collecting and merging reference grid data from the existing image pipeline.
-2. Add support for ingesting local audio and video files.
-3. Extract ENF-relevant waveform data from those media files.
-4. Compare the extracted waveform against a selected grid's reference data.
-5. Score and rank the best candidate matches.
-6. Provide both CLI-driven results and a GUI workflow for visual inspection.
+**3. Inspect matches in GUI:**
+```bash
+python enf_view.py --results results.json
+```
 
-The CLI is expected to come first. The GUI will follow as a comparison and inspection tool that can overlay the query waveform against top candidate matches and support scrollable, zoomable review.
+## Tools
 
-## Expected CLI Scope
+### `enf_extract.py` — ENF Extraction from Audio/Video
 
-The planned CLI should eventually be able to:
+Extracts Electric Network Frequency using Quadratically Interpolated FFT (QIFFT).
 
-- Accept an input audio or video file.
-- Extract audio from video internally.
-- Select one of the four supported grids.
-- Return the top matching candidate windows.
-- Support an optional top-N output count, defaulting to 3.
-- Support an optional score or accuracy threshold cutoff.
-- Export structured results.
-- Optionally export an image showing overlapping waveforms.
+**Usage:**
+```bash
+python enf_extract.py --input FILE [--output OUTPUT.csv] [options]
+```
 
-## Matching Approach
+**Key Arguments:**
+- `--input` (required): Audio or video file
+- `--output`: Output CSV path (default: `{input_stem}_enf.csv`)
+- `--nominal`: Nominal grid frequency (default: 60 Hz)
+- `--harmonic`: Which harmonic to extract (default: 2 — second harmonic at 120 Hz)
+  - Harmonic 2 is recommended — much cleaner results with less noise contamination
+  - Result is automatically divided back to fundamental (60 Hz)
+- `--bandwidth`: Half-bandwidth in Hz around target (default: 0.5)
+- `--frame-sec`: Frame duration in seconds (default: 1.0)
+- `--overlap`: Frame overlap fraction 0–1 (default: 0.5)
+- `--pad-factor`: Zero-padding multiplier for FFT (default: 16)
+- `--median-window`: Median filter window size (default: 3, 0 to disable)
 
-The exact matching algorithm is still an open project task. The current plan is to compare several candidate methods before choosing the initial matcher. The score is expected to combine:
+**Output CSV columns:**
+- `offset_seconds`: Seconds from start of recording
+- `frequency_hz`: Estimated ENF frequency
 
-- Percent of the query waveform that stays within a configurable Hz threshold of the reference waveform.
-- Shape similarity between the query and candidate reference window.
+**Example:**
+```bash
+python enf_extract.py --input fan.wav --output fan_enf.csv --harmonic 2 --bandwidth 0.5
+```
 
-This part of the project is still under active design and will likely evolve as more recordings and test cases become available.
+### `enf_compare.py` — Grid Matching
 
-## Roadmap Summary
+Compares an extracted ENF trace against grid reference data using FFT-based cross-correlation.
 
-The near-term roadmap is:
+**Usage:**
+```bash
+python enf_compare.py --trace TRACE.csv --grid-dir DIR --region REGION [options]
+```
 
-1. Normalize and merge the reference CSV data.
-2. Build query-side ENF extraction from audio and video.
-3. Run algorithm comparison across candidate matching methods.
-4. Build the first CLI matcher.
-5. Add evaluation workflows and output artifacts.
-6. Build the waveform comparison GUI.
+**Key Arguments:**
+- `--trace` (required): ENF trace CSV from `enf_extract.py`
+- `--grid-dir` (required): Directory containing daily grid CSV files
+- `--region` (required): Grid region (EI, WECC, ERCOT, or Quebec)
+- `--date`: Filter grid data to specific date(s) (YYYY-MM-DD, comma-separated)
+- `--top-n`: Number of top matches to return (default: 3)
+- `--threshold`: Hz threshold for "close enough" scoring (default: 0.01)
+- `--output`: JSON output path (default: `{trace_stem}_results.json`)
+- `--plot`: Generate overlay PNG for each top match
+- `--recording-time`: Known UTC start time (ISO format) for offset display
 
-More detailed planning lives in `Project-Plan.md`.
+**Output JSON:**
+Contains ranked matches with:
+- `rank`: Match order
+- `ref_start_utc`: Reference window start time
+- `ref_end_utc`: Reference window end time
+- `correlation`: Pearson correlation (0–1)
+- `threshold_coverage`: Fraction of samples within threshold Hz (0–1)
+- `composite_score`: Weighted score (60% correlation + 40% coverage)
+
+**Scoring:**
+The composite score combines:
+- **Pearson correlation** (60%): Shape similarity, offset-invariant
+- **Threshold coverage** (40%): Absolute frequency proximity
+
+**Example:**
+```bash
+python enf_compare.py \
+  --trace fan_enf.csv \
+  --grid-dir source_data/grid_data \
+  --region EI \
+  --date 2026-04-20 \
+  --top-n 5 \
+  --threshold 0.01 \
+  --plot \
+  --recording-time "2026-04-20T16:36:00"
+```
+
+### `enf_view.py` — GUI Overlay Viewer
+
+Interactive tkinter + matplotlib viewer for visual inspection of ENF matches.
+
+**Usage:**
+```bash
+# Load from results JSON
+python enf_view.py --results results.json
+
+# Or load manually
+python enf_view.py --trace trace.csv --grid-dir source_data/grid_data --region EI
+```
+
+**Features:**
+- **Overlay display**: Query trace (blue) vs. matched reference (orange)
+- **Match stepping**: Previous/Next buttons to cycle through top matches
+- **Scroll/Zoom**: Log-scale zoom slider and time-position scroll
+- **Score display**: Shows correlation, coverage %, and composite score
+- **UTC info**: Displays reference time window in plot title
+
+**Controls:**
+- **Match combobox**: Jump to any top match
+- **Scroll slider**: Move time window across the traces
+- **Zoom slider**: Change visible time range (log scale, narrow ← → wide)
+- **Prev/Next buttons**: Step through ranked matches
+
+## Project Structure
+
+```
+.
+├── enf_extract.py           # ENF extraction (audio/video → CSV)
+├── enf_compare.py           # Grid matching (CSV → JSON results)
+├── enf_view.py              # GUI viewer (JSON → overlay display)
+├── freqgauge_view_csv.py    # CSV viewer for grid reference data
+├── freqgauge_extract.py     # Extract grid data from FNET images
+├── collect_freqgauge_service.py  # Continuous FNET image collection
+├── requirements.txt         # Python dependencies
+├── Project-Plan.md          # Detailed technical plan
+└── source_data/
+    ├── audio_samples/       # Test recordings
+    ├── grid_data/           # Daily grid CSVs from FNET
+    └── scraped_images/      # FNET frequency gauge images (from collector)
+```
+
+## Technical Details
+
+### ENF Extraction Method
+
+The `enf_extract.py` script uses **Quadratically Interpolated FFT (QIFFT)** for sub-bin frequency precision:
+
+1. **Bandpass filter**: 4th-order Butterworth filter around target frequency
+2. **Windowing**: Hanning window on each frame
+3. **FFT**: Zero-padded (default 16×) for fine bin spacing
+4. **Peak finding**: Locate maximum magnitude in expected frequency range
+5. **QIFFT interpolation**: Quadratic fit on peak and neighbors for sub-bin accuracy
+6. **Aggregation**: Average multiple estimates per second to match grid cadence
+7. **Smoothing**: Optional median filter for noise reduction
+
+**Formula:** For magnitude bins `α`, `β`, `γ` at peak `k`:
+```
+δ = 0.5 × (α - γ) / (α - 2β + γ)
+f_est = (k + δ) × (fs / N)
+```
+
+### Matching Algorithm
+
+The `enf_compare.py` script uses FFT-based cross-correlation for speed:
+
+1. **Load & resample**: Grid data resampled to regular 1-second intervals
+2. **Normalize**: Query and reference windows normalized (zero mean, unit std)
+3. **FFT correlation**: Fast cross-correlation using `numpy.correlate`
+4. **Candidate selection**: Top 50 by correlation score
+5. **Threshold coverage**: Count samples within Hz threshold for top candidates
+6. **Composite scoring**: 0.6 × correlation + 0.4 × coverage
+7. **Ranking**: Sort by composite score descending
+
+### Default Settings
+
+- **Harmonic**: 2 (second harmonic at 120 Hz, much cleaner than fundamental)
+- **Bandwidth**: 0.5 Hz
+- **Frame size**: 1.0 second
+- **Overlap**: 50% (0.5 second hop)
+- **Zero-padding**: 16× (48 kHz × 1s = 48000 points → 768000 points)
+- **Median filter**: 3-sample window
+- **Threshold**: 0.01 Hz
+- **Composite weights**: 60% correlation, 40% coverage
+
+## Dependencies
+
+```
+numpy>=1.24.0
+pandas>=2.0.0
+scipy>=1.11.0
+matplotlib>=3.7.0
+opencv-python>=4.8.0  # For image extraction (freqgauge_extract.py)
+requests>=2.28.0      # For image collection (collect_freqgauge_service.py)
+```
+
+## Data Sources
+
+### Reference Grid Data
+
+Daily CSV files are generated by processing FNET frequency gauge images. Each CSV contains:
+```
+timestamp_utc,region,frequency_hz
+2026-04-20 16:36:12.457984+00:00,EI,59.980379
+```
+
+**Grid regions:**
+- **EI**: Eastern Interconnection (US East)
+- **WECC**: Western Electricity Coordinating Council (US West)
+- **ERCOT**: Electric Reliability Council of Texas (Texas)
+- **Quebec**: Hydro-Québec system (Quebec/Eastern Canada)
+
+### Image Collection
+
+Use `collect_freqgauge_service.py` to continuously download FNET gauge images:
+
+```bash
+python collect_freqgauge_service.py \
+  --outdir source_data/scraped_images \
+  --interval 38.6
+```
+
+### Image Processing
+
+Extract frequency traces from collected images:
+
+```bash
+python freqgauge_extract.py \
+  --input source_data/scraped_images \
+  --output source_data/grid_data/merged.csv \
+  -j 8
+```
+
+View and explore extracted data:
+
+```bash
+python freqgauge_view_csv.py source_data/grid_data/merged.csv
+```
+
+## Validation & Testing
+
+The tool was validated end-to-end with:
+- **Test recording**: `fan.wav` — 340 seconds, 48 kHz stereo, recorded 2026-04-20 12:36 PM EST
+- **Reference data**: EI grid data for 2026-04-20
+- **Result**: Top match found at **16:36:05 UTC** (within 5 seconds of true time)
+  - Correlation: 0.713
+  - Coverage: 57%
+  - Composite score: 0.657
+  - All top 5 matches within ±7 seconds of correct time
+
+## Future Work
+
+From the project plan:
+- Expand to 50 Hz grids (international support)
+- Automated geographic grid detection
+- Web-based deployment
+- Large-scale benchmark dataset
+- Forensic-grade confidence metrics
+- GPU-accelerated matching for large datasets
 
 ## Data Sources
 Data was scraped from FNET's live grid data
