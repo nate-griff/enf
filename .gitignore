@@ -220,3 +220,4 @@ __marimo__/
 */testdata/_*.csv
 */images/
 */out/
+*/scraped_images/
