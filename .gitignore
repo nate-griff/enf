@@ -32,3 +32,7 @@ ImageExtraction/testdata/_*.csv
 ImageExtraction/images/
 ImageExtraction/out/
 griffin_nathan_finalproject_draftcode/
+source_data\video_samples\ProfessionalMic\*.webm
+source_data\video_samples\ProfessionalMic\*.mkv
+source_data\video_samples\YoutubeLivestream\*.webm
+source_data\video_samples\YoutubeLivestream\*.mkv
