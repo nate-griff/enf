@@ -84,7 +84,7 @@ python enf_extract.py --input fan.wav --output fan_enf.csv --harmonic 2 --bandwi
 
 ### `enf_compare.py` — Grid Matching
 
-Compares an extracted ENF trace against grid reference data using FFT-based cross-correlation.
+Compares an extracted ENF trace against grid reference data using FFT-accelerated Pearson correlation on contiguous reference segments.
 
 **Usage:**
 ```bash
@@ -97,10 +97,12 @@ python enf_compare.py --trace TRACE.csv --grid-dir DIR --region REGION [options]
 - `--region` (required): Grid region (EI, WECC, ERCOT, or Quebec)
 - `--date`: Filter grid data to specific date(s) (YYYY-MM-DD, comma-separated)
 - `--top-n`: Number of top matches to return (default: 3)
+- `--min-separation-sec`: Minimum separation between returned match start times in seconds (default: 5, use 0 to allow adjacent near-duplicates)
 - `--threshold`: Hz threshold for "close enough" scoring (default: 0.01)
 - `--output`: JSON output path (default: `{trace_stem}_results.json`)
 - `--plot`: Generate overlay PNG for each top match
 - `--recording-time`: Known UTC start time (ISO format) for offset display
+- Reference data is only interpolated within short observed runs. Large outages or missing-day gaps are split into separate segments and are not matchable.
 
 **Output JSON:**
 Contains ranked matches with:
@@ -109,12 +111,14 @@ Contains ranked matches with:
 - `ref_end_utc`: Reference window end time
 - `correlation`: Pearson correlation (0–1)
 - `threshold_coverage`: Fraction of samples within threshold Hz (0–1)
-- `composite_score`: Weighted score (60% correlation + 40% coverage)
+- `composite_score`: Weighted score (40% correlation + 60% coverage)
 
 **Scoring:**
 The composite score combines:
-- **Pearson correlation** (60%): Shape similarity, offset-invariant
-- **Threshold coverage** (40%): Absolute frequency proximity
+- **Pearson correlation** (40%): Shape similarity, offset-invariant
+- **Threshold coverage** (60%): Absolute frequency proximity
+
+After scoring, matches are greedily filtered so returned `ref_start_utc` values stay at least `--min-separation-sec` apart. This suppresses near-duplicate 1-second-offset windows while still backfilling deeper candidates until `top-n` distinct matches are found.
 
 **Example:**
 ```bash
@@ -124,6 +128,7 @@ python enf_compare.py \
   --region EI \
   --date 2026-04-20 \
   --top-n 5 \
+  --min-separation-sec 5 \
   --threshold 0.01 \
   --plot \
   --recording-time "2026-04-20T16:36:00"
@@ -195,15 +200,16 @@ f_est = (k + δ) × (fs / N)
 
 ### Matching Algorithm
 
-The `enf_compare.py` script uses FFT-based cross-correlation for speed:
+The `enf_compare.py` script uses FFT-accelerated sliding Pearson correlation:
 
-1. **Load & resample**: Grid data resampled to regular 1-second intervals
-2. **Normalize**: Query and reference windows normalized (zero mean, unit std)
-3. **FFT correlation**: Fast cross-correlation using `numpy.correlate`
-4. **Candidate selection**: Top 50 by correlation score
-5. **Threshold coverage**: Count samples within Hz threshold for top candidates
-6. **Composite scoring**: 0.6 × correlation + 0.4 × coverage
-7. **Ranking**: Sort by composite score descending
+1. **Load & segment**: Grid data is sorted by timestamp and split at large gaps so outages and missing days never become synthetic match windows
+2. **Resample**: Each contiguous segment is resampled to regular 1-second intervals independently
+3. **Stable Pearson correlation**: Query and candidate windows are mean-centered, and correlation is computed with FFT cross-correlation plus rolling window statistics
+4. **Candidate selection**: Top 50 correlation candidates are kept from each contiguous segment
+5. **Threshold coverage**: Count samples within the Hz threshold for those candidates
+6. **Composite scoring**: 0.4 × correlation + 0.6 × coverage
+7. **Distinct-match filtering**: Keep the highest-scoring matches whose start times are separated by at least the configured spacing window
+8. **Ranking**: Return the top-N distinct matches in score order
 
 ### Default Settings
 
@@ -214,7 +220,8 @@ The `enf_compare.py` script uses FFT-based cross-correlation for speed:
 - **Zero-padding**: 16× (48 kHz × 1s = 48000 points → 768000 points)
 - **Median filter**: 3-sample window
 - **Threshold**: 0.01 Hz
-- **Composite weights**: 60% correlation, 40% coverage
+- **Reference gap split**: 5 seconds
+- **Composite weights**: 40% correlation, 60% coverage
 
 ## Dependencies
 
@@ -278,7 +285,7 @@ The tool was validated end-to-end with:
 - **Result**: Top match found at **16:36:05 UTC** (within 5 seconds of true time)
   - Correlation: 0.713
   - Coverage: 57%
-  - Composite score: 0.657
+  - Composite score: 0.629
   - All top 5 matches within ±7 seconds of correct time
 
 ## Future Work
