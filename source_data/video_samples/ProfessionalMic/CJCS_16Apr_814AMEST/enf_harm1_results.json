@@ -1,0 +1,35 @@
+{
+  "trace_file": "source_data\\video_samples\\ProfessionalMic\\CJCS_16Apr_814AMEST\\enf_harm1.csv",
+  "region": "EI",
+  "threshold_hz": 0.01,
+  "query_length_seconds": 649,
+  "matches": [
+    {
+      "rank": 1,
+      "ref_start_utc": "2026-04-01T00:46:05+00:00",
+      "ref_end_utc": "2026-04-01T00:56:53+00:00",
+      "correlation": 0.224754,
+      "threshold_coverage": 0.060092,
+      "composite_score": 0.125957,
+      "ref_offset_index": 636
+    },
+    {
+      "rank": 2,
+      "ref_start_utc": "2026-03-26T08:47:31+00:00",
+      "ref_end_utc": "2026-03-26T08:58:19+00:00",
+      "correlation": 0.214544,
+      "threshold_coverage": 0.060092,
+      "composite_score": 0.121873,
+      "ref_offset_index": 229
+    },
+    {
+      "rank": 3,
+      "ref_start_utc": "2026-04-20T04:04:25+00:00",
+      "ref_end_utc": "2026-04-20T04:15:13+00:00",
+      "correlation": 0.224235,
+      "threshold_coverage": 0.049307,
+      "composite_score": 0.119278,
+      "ref_offset_index": 3118
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "trace_file": "source_data\\audio_samples\\Microwave\\harmonics\\microwave_enf_harm1.csv",
+  "region": "EI",
+  "threshold_hz": 0.01,
+  "query_length_seconds": 340,
+  "matches": [
+    {
+      "rank": 1,
+      "ref_start_utc": "2026-03-30T22:12:16+00:00",
+      "ref_end_utc": "2026-03-30T22:17:55+00:00",
+      "correlation": 0.480031,
+      "threshold_coverage": 0.011765,
+      "composite_score": 0.199071,
+      "ref_offset_index": 2223
+    },
+    {
+      "rank": 2,
+      "ref_start_utc": "2026-03-26T10:12:19+00:00",
+      "ref_end_utc": "2026-03-26T10:17:58+00:00",
+      "correlation": 0.455606,
+      "threshold_coverage": 0.008824,
+      "composite_score": 0.187536,
+      "ref_offset_index": 113
+    },
+    {
+      "rank": 3,
+      "ref_start_utc": "2026-03-24T23:29:20+00:00",
+      "ref_end_utc": "2026-03-24T23:34:59+00:00",
+      "correlation": 0.43694,
+      "threshold_coverage": 0.017647,
+      "composite_score": 0.185364,
+      "ref_offset_index": 4148
+    }
+  ]
+}

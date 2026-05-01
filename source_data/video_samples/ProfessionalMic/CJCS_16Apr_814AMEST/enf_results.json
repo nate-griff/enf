@@ -1,0 +1,35 @@
+{
+  "trace_file": "source_data\\video_samples\\ProfessionalMic\\CJCS_16Apr_814AMEST\\enf.csv",
+  "region": "EI",
+  "threshold_hz": 0.01,
+  "query_length_seconds": 649,
+  "matches": [
+    {
+      "rank": 1,
+      "ref_start_utc": "2026-03-23T11:18:05+00:00",
+      "ref_end_utc": "2026-03-23T11:28:53+00:00",
+      "correlation": 0.308758,
+      "threshold_coverage": 0.077042,
+      "composite_score": 0.169728,
+      "ref_offset_index": 1292
+    },
+    {
+      "rank": 2,
+      "ref_start_utc": "2026-04-20T05:50:49+00:00",
+      "ref_end_utc": "2026-04-20T06:01:37+00:00",
+      "correlation": 0.283249,
+      "threshold_coverage": 0.093991,
+      "composite_score": 0.169694,
+      "ref_offset_index": 9502
+    },
+    {
+      "rank": 3,
+      "ref_start_utc": "2026-04-08T14:56:05+00:00",
+      "ref_end_utc": "2026-04-08T15:06:53+00:00",
+      "correlation": 0.280997,
+      "threshold_coverage": 0.09245,
+      "composite_score": 0.167869,
+      "ref_offset_index": 33
+    }
+  ]
+}
