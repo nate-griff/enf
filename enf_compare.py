@@ -9,10 +9,22 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
+MAX_REFERENCE_GAP_SECONDS = 5.0
+CORRELATION_WEIGHT = 0.4
+COVERAGE_WEIGHT = 0.6
+DEFAULT_MIN_SEPARATION_SECONDS = 5.0
+
+
+@dataclass(frozen=True)
+class ReferenceSegment:
+    index: pd.DatetimeIndex
+    values: np.ndarray
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -60,6 +72,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=(
             "Known UTC start time of the recording (ISO format, e.g. "
             "2026-04-20T16:36:00). Used only for display/validation."
+        ),
+    )
+    parser.add_argument(
+        "--min-separation-sec",
+        type=float,
+        default=DEFAULT_MIN_SEPARATION_SECONDS,
+        help=(
+            "Minimum separation in seconds between returned match start times "
+            f"(default: {DEFAULT_MIN_SEPARATION_SECONDS}). Set to 0 to allow "
+            "near-duplicate offsets."
         ),
     )
     return parser.parse_args(argv)
@@ -145,16 +167,40 @@ def load_grid_data(
 # Resampling
 # ---------------------------------------------------------------------------
 
-def resample_grid(grid: pd.DataFrame) -> tuple[np.ndarray, pd.DatetimeIndex]:
-    """Resample grid data to regular 1-second intervals.
+def resample_grid_segments(
+    grid: pd.DataFrame,
+    max_gap_seconds: float = MAX_REFERENCE_GAP_SECONDS,
+    min_segment_length: int = 1,
+) -> list[ReferenceSegment]:
+    """Resample contiguous reference segments to 1-second intervals.
 
-    Returns the frequency array and the corresponding DatetimeIndex.
+    Missing data should not become synthetic match windows. Split the observed
+    grid data at large timestamp gaps, then resample each contiguous segment
+    independently.
     """
-    ts = grid.set_index("timestamp_utc")["frequency_hz"]
-    ts = ts[~ts.index.duplicated(keep="first")]
-    resampled = ts.resample("1s").mean().interpolate(method="time")
-    resampled = resampled.dropna()
-    return resampled.values.astype(np.float64), resampled.index
+    if grid.empty:
+        return []
+
+    ordered = grid.sort_values("timestamp_utc").reset_index(drop=True)
+    gap_seconds = ordered["timestamp_utc"].diff().dt.total_seconds()
+    segment_ids = gap_seconds.gt(max_gap_seconds).cumsum()
+
+    segments: list[ReferenceSegment] = []
+    for _, segment in ordered.groupby(segment_ids):
+        ts = segment.set_index("timestamp_utc")["frequency_hz"]
+        ts = ts[~ts.index.duplicated(keep="first")]
+        resampled = ts.resample("1s").mean().interpolate(method="time", limit_area="inside")
+        resampled = resampled.dropna()
+        if len(resampled) < min_segment_length:
+            continue
+        segments.append(
+            ReferenceSegment(
+                index=resampled.index,
+                values=resampled.to_numpy(dtype=np.float64),
+            )
+        )
+
+    return segments
 
 
 # ---------------------------------------------------------------------------
@@ -169,26 +215,25 @@ def fft_cross_correlation(query: np.ndarray, reference: np.ndarray) -> np.ndarra
     L = len(query)
     R = len(reference)
     n_offsets = R - L + 1
+    reference_centered = reference - reference.mean()
 
-    # Normalize query
+    # Center query and compute its sum of squares once.
     q_mean = query.mean()
-    q_std = query.std()
-    if q_std == 0:
+    q_centered = query - q_mean
+    q_ss = np.sum(q_centered ** 2)
+    if q_ss <= 1e-12:
         raise SystemExit("ERROR: Query trace has zero variance — cannot correlate.")
-    q_norm = (query - q_mean) / q_std
 
-    # Sliding mean and std of reference windows
-    cumsum = np.cumsum(np.concatenate(([0.0], reference)))
-    cumsum2 = np.cumsum(np.concatenate(([0.0], reference ** 2)))
+    # Sliding mean and sum of squares of reference windows
+    cumsum = np.cumsum(np.concatenate(([0.0], reference_centered)))
+    cumsum2 = np.cumsum(np.concatenate(([0.0], reference_centered ** 2)))
 
     window_sum = cumsum[L:] - cumsum[:n_offsets]
     window_sum2 = cumsum2[L:] - cumsum2[:n_offsets]
 
     window_mean = window_sum / L
-    window_var = window_sum2 / L - window_mean ** 2
-    # Clamp negative variance from floating point
-    window_var = np.maximum(window_var, 0.0)
-    window_std = np.sqrt(window_var)
+    window_ss = window_sum2 - (window_sum ** 2) / L
+    window_ss = np.maximum(window_ss, 0.0)
 
     # FFT-based cross-correlation
     fft_size = 1
@@ -196,10 +241,10 @@ def fft_cross_correlation(query: np.ndarray, reference: np.ndarray) -> np.ndarra
         fft_size <<= 1
 
     q_padded = np.zeros(fft_size)
-    q_padded[:L] = q_norm[::-1]  # reverse for correlation
+    q_padded[:L] = q_centered[::-1]  # reverse for correlation
 
     r_padded = np.zeros(fft_size)
-    r_padded[:R] = reference
+    r_padded[:R] = reference_centered
 
     Q = np.fft.rfft(q_padded)
     Ref = np.fft.rfft(r_padded)
@@ -210,22 +255,13 @@ def fft_cross_correlation(query: np.ndarray, reference: np.ndarray) -> np.ndarra
     # at indices [L-1, L-1 + n_offsets)
     raw_cross = cross[L - 1: L - 1 + n_offsets]
 
-    # Normalize: corr = (sum(q_norm * r_window) / L) but we need to account
-    # for reference normalization per-window.
-    # raw_cross = sum(q_norm * ref[i:i+L]) for each i
-    # Pearson = (raw_cross - L * q_norm_mean * window_mean) / (L * q_norm_std * window_std)
-    # Since q_norm already has mean 0 and std 1:
-    # Pearson = (raw_cross - 0) / (L * 1 * window_std) ... but raw_cross uses raw ref
-    # Actually: raw_cross[i] = sum(q_norm[j] * ref[i+j]) for j in [0,L)
-    # Pearson[i] = (1/L) * sum(q_norm[j] * (ref[i+j] - window_mean[i]) / window_std[i])
-    #            = (raw_cross[i] - sum(q_norm) * window_mean[i]) / (L * window_std[i])
-    # sum(q_norm) = 0, so:
-    # Pearson[i] = raw_cross[i] / (L * window_std[i])
-
-    # Avoid division by zero
-    valid_std = window_std > 1e-10
+    # With the centered query, raw_cross is the Pearson numerator:
+    # sum((query - q_mean) * reference_window).
+    # Divide by sqrt(sum((query-q_mean)^2) * sum((ref-ref_mean)^2)).
+    denom = np.sqrt(q_ss * window_ss)
+    valid_std = denom > 1e-12
     correlations = np.zeros(n_offsets)
-    correlations[valid_std] = raw_cross[valid_std] / (L * window_std[valid_std])
+    correlations[valid_std] = raw_cross[valid_std] / denom[valid_std]
 
     # Clamp to [-1, 1] for numerical safety
     correlations = np.clip(correlations, -1.0, 1.0)
@@ -251,6 +287,8 @@ def sliding_window_compare(
     threshold: float,
     top_n: int,
     n_candidates: int = 50,
+    correlation_weight: float = CORRELATION_WEIGHT,
+    coverage_weight: float = COVERAGE_WEIGHT,
 ) -> list[dict]:
     """Run the sliding-window comparison and return top matches."""
     L = len(query)
@@ -263,15 +301,8 @@ def sliding_window_compare(
             "Cannot compare."
         )
 
-    print(
-        f"Sliding window: query={L}s, reference={R}s, offsets={n_offsets} ... ",
-        end="",
-        flush=True,
-    )
-
     # Step 1: FFT-based correlation for all offsets
     correlations = fft_cross_correlation(query, reference)
-    print("correlation done ... ", end="", flush=True)
 
     # Step 2: Pick top candidates by correlation
     n_cand = min(n_candidates, n_offsets)
@@ -281,10 +312,12 @@ def sliding_window_compare(
     coverages = compute_threshold_coverage(
         query, reference, candidate_indices, threshold
     )
-    print("coverage done.")
 
     # Step 4: Composite scores
-    composite = 0.6 * correlations[candidate_indices] + 0.4 * coverages
+    composite = (
+        correlation_weight * correlations[candidate_indices]
+        + coverage_weight * coverages
+    )
 
     # Step 5: Rank by composite score
     ranked = np.argsort(composite)[::-1]
@@ -304,13 +337,100 @@ def sliding_window_compare(
     return results
 
 
+def compare_against_reference_segments(
+    query: np.ndarray,
+    reference_segments: list[ReferenceSegment],
+    threshold: float,
+    top_n: int,
+    n_candidates: int = 50,
+    correlation_weight: float = CORRELATION_WEIGHT,
+    coverage_weight: float = COVERAGE_WEIGHT,
+    min_separation_sec: float = DEFAULT_MIN_SEPARATION_SECONDS,
+) -> list[dict]:
+    """Compare a query trace against many contiguous reference segments."""
+    combined: list[dict] = []
+    candidate_pool_size = max(n_candidates, top_n * 10)
+
+    for segment in reference_segments:
+        if len(segment.values) < len(query):
+            continue
+
+        segment_results = sliding_window_compare(
+            query,
+            segment.values,
+            threshold,
+            top_n=candidate_pool_size,
+            n_candidates=candidate_pool_size,
+            correlation_weight=correlation_weight,
+            coverage_weight=coverage_weight,
+        )
+        for match in segment_results:
+            offset = match["ref_offset_index"]
+            combined.append(
+                {
+                    **match,
+                    "ref_start_utc": segment.index[offset],
+                    "ref_end_utc": segment.index[offset + len(query) - 1],
+                    "_reference": segment.values,
+                    "_ref_index": segment.index,
+                }
+            )
+
+    combined.sort(
+        key=lambda m: (
+            m["composite_score"],
+            m["threshold_coverage"],
+            m["correlation"],
+            m["ref_start_utc"],
+        ),
+        reverse=True,
+    )
+    distinct_matches = select_distinct_matches(
+        combined,
+        top_n=top_n,
+        min_separation_sec=min_separation_sec,
+    )
+
+    ranked: list[dict] = []
+    for rank_idx, match in enumerate(distinct_matches, start=1):
+        ranked.append({**match, "rank": rank_idx})
+    return ranked
+
+
+def select_distinct_matches(
+    matches: list[dict],
+    top_n: int,
+    min_separation_sec: float,
+) -> list[dict]:
+    """Greedily keep the highest-ranked matches that are time-separated."""
+    if top_n <= 0:
+        return []
+    if min_separation_sec <= 0:
+        return matches[:top_n]
+
+    selected: list[dict] = []
+    for match in matches:
+        start = pd.Timestamp(match["ref_start_utc"])
+        too_close = any(
+            abs((start - pd.Timestamp(kept["ref_start_utc"])).total_seconds())
+            <= min_separation_sec
+            for kept in selected
+        )
+        if too_close:
+            continue
+        selected.append(match)
+        if len(selected) >= top_n:
+            break
+
+    return selected
+
+
 # ---------------------------------------------------------------------------
 # Output
 # ---------------------------------------------------------------------------
 
 def print_results(
     results: list[dict],
-    ref_index: pd.DatetimeIndex,
     recording_time: pd.Timestamp | None,
 ) -> None:
     """Print a summary table to the console."""
@@ -322,7 +442,7 @@ def print_results(
     print("-" * len(header))
 
     for m in results:
-        ts = ref_index[m["ref_offset_index"]]
+        ts = pd.Timestamp(m["ref_start_utc"])
         row = (
             f"{m['rank']:<5} {str(ts):<32} "
             f"{m['correlation']:>7.4f} {m['threshold_coverage']:>7.4f} "
@@ -337,7 +457,6 @@ def print_results(
 
 def write_json(
     results: list[dict],
-    ref_index: pd.DatetimeIndex,
     query_length: int,
     trace_path: Path,
     region: str,
@@ -347,8 +466,8 @@ def write_json(
     """Write results to a JSON file."""
     matches = []
     for m in results:
-        start_ts = ref_index[m["ref_offset_index"]]
-        end_ts = ref_index[m["ref_offset_index"] + query_length - 1]
+        start_ts = pd.Timestamp(m["ref_start_utc"])
+        end_ts = pd.Timestamp(m["ref_end_utc"])
         matches.append({
             "rank": m["rank"],
             "ref_start_utc": start_ts.isoformat(),
@@ -376,8 +495,6 @@ def write_json(
 def generate_plots(
     results: list[dict],
     query: np.ndarray,
-    reference: np.ndarray,
-    ref_index: pd.DatetimeIndex,
     output_stem: str,
     output_dir: Path,
 ) -> None:
@@ -393,10 +510,12 @@ def generate_plots(
     seconds = np.arange(L)
 
     for m in results:
+        reference = m["_reference"]
+        ref_index = m["_ref_index"]
         offset = m["ref_offset_index"]
         ref_window = reference[offset: offset + L]
-        start_ts = ref_index[offset]
-        end_ts = ref_index[offset + L - 1]
+        start_ts = pd.Timestamp(m["ref_start_utc"])
+        end_ts = pd.Timestamp(m["ref_end_utc"])
 
         fig, ax = plt.subplots(figsize=(12, 5))
         ax.plot(seconds, query, color="blue", linewidth=0.8, label="Query (trace)")
@@ -443,14 +562,26 @@ def main(argv: list[str] | None = None) -> int:
     dates = resolve_dates(args.date)
     grid = load_grid_data(args.grid_dir, args.region, dates)
 
-    # Resample grid to 1-second intervals
-    print("Resampling grid data to 1-second intervals...")
-    ref_values, ref_index = resample_grid(grid)
-    print(f"Resampled reference: {len(ref_values)} samples")
+    # Resample observed reference data into contiguous segments only.
+    print("Resampling grid data to 1-second contiguous segments...")
+    reference_segments = resample_grid_segments(
+        grid,
+        min_segment_length=len(query),
+    )
+    total_samples = sum(len(segment.values) for segment in reference_segments)
+    print(
+        f"Prepared {len(reference_segments)} segment(s) "
+        f"with {total_samples} resampled samples"
+    )
+    print("Scoring candidate windows across contiguous reference segments...")
 
     # Sliding-window comparison
-    results = sliding_window_compare(
-        query, ref_values, args.threshold, args.top_n
+    results = compare_against_reference_segments(
+        query,
+        reference_segments,
+        args.threshold,
+        args.top_n,
+        min_separation_sec=args.min_separation_sec,
     )
 
     if not results:
@@ -463,14 +594,14 @@ def main(argv: list[str] | None = None) -> int:
         recording_time = pd.Timestamp(args.recording_time, tz="UTC")
 
     # Console output
-    print_results(results, ref_index, recording_time)
+    print_results(results, recording_time)
 
     # JSON output
     output_path = args.output or args.trace.with_name(
         f"{args.trace.stem}_results.json"
     )
     write_json(
-        results, ref_index, len(query),
+        results, len(query),
         args.trace, args.region, args.threshold, output_path,
     )
 
@@ -478,7 +609,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.plot:
         output_stem = output_path.stem.replace("_results", "")
         generate_plots(
-            results, query, ref_values, ref_index,
+            results, query,
             output_stem, output_path.parent,
         )
 
