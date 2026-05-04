@@ -31,6 +31,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--overlap", type=float, default=0.5, help="Frame overlap fraction 0-1.")
     parser.add_argument("--pad-factor", type=int, default=16, help="Zero-padding multiplier for FFT.")
     parser.add_argument("--median-window", type=int, default=3, help="Median filter window size (0=disable).")
+    parser.add_argument(
+        "--export-figure",
+        action="store_true",
+        help="Export a two-panel figure with a spectrogram and the final extracted trace.",
+    )
+    parser.add_argument(
+        "--figure-output",
+        default=None,
+        help="Figure output path. Implies figure export when provided.",
+    )
     return parser.parse_args(argv)
 
 
@@ -65,6 +75,82 @@ def load_audio(path: str) -> tuple[int, np.ndarray]:
         data = data / max_val
 
     return sr, data
+
+
+def resolve_figure_output_path(
+    input_path: str,
+    output_path: str | None,
+    export_figure: bool,
+    figure_output: str | None,
+) -> str | None:
+    """Resolve the requested figure output path, if any."""
+    if figure_output is not None:
+        return figure_output
+    if not export_figure:
+        return None
+
+    base_path = Path(output_path) if output_path is not None else Path(input_path).with_suffix("")
+    return str(base_path.with_suffix(".png"))
+
+
+def write_summary_figure(
+    path: str,
+    signal: np.ndarray,
+    sr: int,
+    trace_timestamps: np.ndarray,
+    trace_freqs: np.ndarray,
+    nominal: float,
+) -> None:
+    """Write a two-panel figure with a spectrogram and the extracted trace."""
+    from matplotlib.backends.backend_agg import FigureCanvasAgg
+    from matplotlib.figure import Figure
+
+    figure_path = Path(path)
+    figure_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if len(signal) < 2:
+        raise RuntimeError("Not enough audio samples to render summary figure.")
+
+    nfft = min(2048, max(64, len(signal) // 2))
+    if nfft >= len(signal):
+        nfft = len(signal) - 1
+    noverlap = min(nfft // 2, nfft - 1)
+
+    fig = Figure(figsize=(12, 4.5), constrained_layout=True)
+    FigureCanvasAgg(fig)
+    spec_ax, trace_ax = fig.subplots(1, 2)
+
+    _, freqs, _, image = spec_ax.specgram(
+        signal,
+        NFFT=nfft,
+        Fs=sr,
+        noverlap=noverlap,
+        cmap="viridis",
+    )
+    spec_ax.set_title("Spectrogram")
+    spec_ax.set_xlabel("Time (s)")
+    spec_ax.set_ylabel("Frequency (Hz)")
+    spec_ax.set_ylim(0.0, min(250.0, float(freqs[-1])))
+    fig.colorbar(image, ax=spec_ax, label="Power (dB)")
+
+    trace_ax.plot(trace_timestamps, trace_freqs, linewidth=1.5)
+    trace_ax.set_title("Extracted ENF Trace")
+    trace_ax.set_xlabel("Offset (s)")
+    trace_ax.set_ylabel("Frequency (Hz)")
+    trace_ax.axhline(nominal, color="tab:red", linestyle="--", linewidth=1.0)
+    trace_ax.grid(True, alpha=0.3)
+
+    if len(trace_timestamps) > 0:
+        trace_ax.set_xlim(float(trace_timestamps[0]), float(trace_timestamps[-1]))
+
+    freq_margin = 0.1
+    if len(trace_freqs) > 0:
+        low = min(float(np.min(trace_freqs)), nominal) - freq_margin
+        high = max(float(np.max(trace_freqs)), nominal) + freq_margin
+        if low < high:
+            trace_ax.set_ylim(low, high)
+
+    fig.savefig(figure_path, dpi=150)
 
 
 def bandpass_filter(
@@ -159,10 +245,14 @@ def aggregate_to_one_hz(
 
 def apply_median_filter(freqs: np.ndarray, window: int) -> np.ndarray:
     """Apply median filter for smoothing. Window must be odd."""
-    if window <= 0:
+    if window <= 0 or len(freqs) == 0:
         return freqs
     if window % 2 == 0:
         window += 1
+    max_window = len(freqs) if len(freqs) % 2 == 1 else len(freqs) - 1
+    if max_window <= 1:
+        return freqs
+    window = min(window, max_window)
     return scipy.signal.medfilt(freqs, kernel_size=window)
 
 
@@ -200,6 +290,12 @@ def main(argv: list[str] | None = None) -> int:
     output_path = args.output
     if output_path is None:
         output_path = str(Path(input_path).with_suffix("")) + "_enf.csv"
+    figure_output_path = resolve_figure_output_path(
+        input_path=input_path,
+        output_path=output_path,
+        export_figure=args.export_figure,
+        figure_output=args.figure_output,
+    )
 
     # Extract audio from video if needed
     audio_extensions = {".wav", ".flac"}
@@ -233,8 +329,19 @@ def main(argv: list[str] | None = None) -> int:
         freq_estimates = apply_median_filter(freq_estimates, args.median_window)
 
         write_csv(output_path, timestamps, freq_estimates)
+        if figure_output_path is not None:
+            write_summary_figure(
+                path=figure_output_path,
+                signal=signal,
+                sr=sr,
+                trace_timestamps=timestamps,
+                trace_freqs=freq_estimates,
+                nominal=args.nominal,
+            )
         print_summary(input_path, duration, freq_estimates)
         print(f"Output:     {output_path}")
+        if figure_output_path is not None:
+            print(f"Figure:     {figure_output_path}")
 
     except RuntimeError as e:
         print(f"Error: {e}", file=sys.stderr)

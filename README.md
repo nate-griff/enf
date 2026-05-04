@@ -31,6 +31,8 @@ pip install -r requirements.txt
 ```bash
 python enf_extract.py --input recording.wav --output trace.csv
 python enf_extract.py --input recording.mp4 --output trace.csv  # video auto-converts
+python enf_extract.py --input recording.wav --output trace.csv --export-figure
+python enf_extract.py --input recording.wav --output trace.csv --figure-output trace_overview.png
 ```
 
 **2. Compare against grid reference data:**
@@ -72,6 +74,8 @@ python enf_extract.py --input FILE [--output OUTPUT.csv] [options]
 - `--overlap`: Frame overlap fraction 0–1 (default: 0.5)
 - `--pad-factor`: Zero-padding multiplier for FFT (default: 16)
 - `--median-window`: Median filter window size (default: 3, 0 to disable)
+- `--export-figure`: Save a two-panel PNG with a 0-250 Hz spectrogram and the final extracted ENF trace
+- `--figure-output`: Explicit path for the PNG figure; when provided, figure export is enabled automatically
 
 **Output CSV columns:**
 - `offset_seconds`: Seconds from start of recording
@@ -80,6 +84,8 @@ python enf_extract.py --input FILE [--output OUTPUT.csv] [options]
 **Example:**
 ```bash
 python enf_extract.py --input fan.wav --output fan_enf.csv --harmonic 2 --bandwidth 0.5
+python enf_extract.py --input fan.wav --output fan_enf.csv --export-figure
+python enf_extract.py --input fan.wav --output fan_enf.csv --figure-output fan_overview.png
 ```
 
 ### `enf_compare.py` — Grid Matching
