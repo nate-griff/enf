@@ -1,0 +1,35 @@
+{
+  "trace_file": "sample_data\\video_samples\\YoutubeLivestream\\wanatah-04-0226\\default\\trace.csv",
+  "region": "EI",
+  "threshold_hz": 0.01,
+  "query_length_seconds": 2586,
+  "matches": [
+    {
+      "rank": 1,
+      "ref_start_utc": "2026-04-29T18:03:14+00:00",
+      "ref_end_utc": "2026-04-29T18:46:19+00:00",
+      "correlation": 0.154698,
+      "threshold_coverage": 0.091647,
+      "composite_score": 0.116868,
+      "ref_offset_index": 1060
+    },
+    {
+      "rank": 2,
+      "ref_start_utc": "2026-04-27T00:07:55+00:00",
+      "ref_end_utc": "2026-04-27T00:51:00+00:00",
+      "correlation": 0.166277,
+      "threshold_coverage": 0.080433,
+      "composite_score": 0.114771,
+      "ref_offset_index": 3231
+    },
+    {
+      "rank": 3,
+      "ref_start_utc": "2026-04-27T00:07:49+00:00",
+      "ref_end_utc": "2026-04-27T00:50:54+00:00",
+      "correlation": 0.166933,
+      "threshold_coverage": 0.076179,
+      "composite_score": 0.112481,
+      "ref_offset_index": 3225
+    }
+  ]
+}

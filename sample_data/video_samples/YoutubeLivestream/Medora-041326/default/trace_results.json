@@ -1,0 +1,35 @@
+{
+  "trace_file": "sample_data\\video_samples\\YoutubeLivestream\\Medora-041326\\default\\trace.csv",
+  "region": "EI",
+  "threshold_hz": 0.01,
+  "query_length_seconds": 1204,
+  "matches": [
+    {
+      "rank": 1,
+      "ref_start_utc": "2026-04-07T19:47:23+00:00",
+      "ref_end_utc": "2026-04-07T20:07:26+00:00",
+      "correlation": 0.194049,
+      "threshold_coverage": 0.095515,
+      "composite_score": 0.134928,
+      "ref_offset_index": 1439
+    },
+    {
+      "rank": 2,
+      "ref_start_utc": "2026-04-07T19:47:38+00:00",
+      "ref_end_utc": "2026-04-07T20:07:41+00:00",
+      "correlation": 0.193195,
+      "threshold_coverage": 0.091362,
+      "composite_score": 0.132095,
+      "ref_offset_index": 1454
+    },
+    {
+      "rank": 3,
+      "ref_start_utc": "2026-04-07T19:47:30+00:00",
+      "ref_end_utc": "2026-04-07T20:07:33+00:00",
+      "correlation": 0.194424,
+      "threshold_coverage": 0.08804,
+      "composite_score": 0.130593,
+      "ref_offset_index": 1446
+    }
+  ]
+}

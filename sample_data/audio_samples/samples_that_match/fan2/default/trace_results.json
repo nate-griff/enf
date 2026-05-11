@@ -1,0 +1,35 @@
+{
+  "trace_file": "sample_data\\audio_samples\\untested\\fan2\\default\\trace.csv",
+  "region": "EI",
+  "threshold_hz": 0.01,
+  "query_length_seconds": 662,
+  "matches": [
+    {
+      "rank": 1,
+      "ref_start_utc": "2026-04-23T16:18:37+00:00",
+      "ref_end_utc": "2026-04-23T16:29:38+00:00",
+      "correlation": 0.732815,
+      "threshold_coverage": 0.581571,
+      "composite_score": 0.642069,
+      "ref_offset_index": 329
+    },
+    {
+      "rank": 2,
+      "ref_start_utc": "2026-03-31T00:29:47+00:00",
+      "ref_end_utc": "2026-03-31T00:40:48+00:00",
+      "correlation": 0.577177,
+      "threshold_coverage": 0.52568,
+      "composite_score": 0.546279,
+      "ref_offset_index": 1950
+    },
+    {
+      "rank": 3,
+      "ref_start_utc": "2026-04-10T08:23:38+00:00",
+      "ref_end_utc": "2026-04-10T08:34:39+00:00",
+      "correlation": 0.511934,
+      "threshold_coverage": 0.546828,
+      "composite_score": 0.53287,
+      "ref_offset_index": 5468
+    }
+  ]
+}
