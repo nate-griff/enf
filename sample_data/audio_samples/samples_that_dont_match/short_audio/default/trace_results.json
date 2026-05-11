@@ -1,0 +1,35 @@
+{
+  "trace_file": "sample_data\\audio_samples\\untested\\short_audio\\default\\trace.csv",
+  "region": "EI",
+  "threshold_hz": 0.01,
+  "query_length_seconds": 41,
+  "matches": [
+    {
+      "rank": 1,
+      "ref_start_utc": "2026-04-20T10:38:52+00:00",
+      "ref_end_utc": "2026-04-20T10:39:32+00:00",
+      "correlation": 0.683546,
+      "threshold_coverage": 0.658537,
+      "composite_score": 0.66854,
+      "ref_offset_index": 425
+    },
+    {
+      "rank": 2,
+      "ref_start_utc": "2026-05-10T01:14:52+00:00",
+      "ref_end_utc": "2026-05-10T01:15:32+00:00",
+      "correlation": 0.59614,
+      "threshold_coverage": 0.682927,
+      "composite_score": 0.648212,
+      "ref_offset_index": 540
+    },
+    {
+      "rank": 3,
+      "ref_start_utc": "2026-04-07T11:23:53+00:00",
+      "ref_end_utc": "2026-04-07T11:24:33+00:00",
+      "correlation": 0.616765,
+      "threshold_coverage": 0.658537,
+      "composite_score": 0.641828,
+      "ref_offset_index": 52
+    }
+  ]
+}
