@@ -1,0 +1,35 @@
+{
+  "trace_file": "sample_data\\audio_samples\\untested\\bose_headphones_near_fan\\harmonics\\harm1_trace.csv",
+  "region": "EI",
+  "threshold_hz": 0.01,
+  "query_length_seconds": 277,
+  "matches": [
+    {
+      "rank": 1,
+      "ref_start_utc": "2026-05-11T05:53:03+00:00",
+      "ref_end_utc": "2026-05-11T05:57:39+00:00",
+      "correlation": 0.41593,
+      "threshold_coverage": 0.036101,
+      "composite_score": 0.188033,
+      "ref_offset_index": 913
+    },
+    {
+      "rank": 2,
+      "ref_start_utc": "2026-04-23T23:05:57+00:00",
+      "ref_end_utc": "2026-04-23T23:10:33+00:00",
+      "correlation": 0.353919,
+      "threshold_coverage": 0.072202,
+      "composite_score": 0.184889,
+      "ref_offset_index": 6
+    },
+    {
+      "rank": 3,
+      "ref_start_utc": "2026-04-20T00:29:30+00:00",
+      "ref_end_utc": "2026-04-20T00:34:06+00:00",
+      "correlation": 0.350218,
+      "threshold_coverage": 0.064982,
+      "composite_score": 0.179076,
+      "ref_offset_index": 759
+    }
+  ]
+}

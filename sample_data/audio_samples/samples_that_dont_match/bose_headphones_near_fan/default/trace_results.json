@@ -1,0 +1,35 @@
+{
+  "trace_file": "sample_data\\audio_samples\\untested\\bose_headphones_near_fan\\default\\trace.csv",
+  "region": "EI",
+  "threshold_hz": 0.01,
+  "query_length_seconds": 277,
+  "matches": [
+    {
+      "rank": 1,
+      "ref_start_utc": "2026-03-21T17:46:40+00:00",
+      "ref_end_utc": "2026-03-21T17:51:16+00:00",
+      "correlation": 0.710986,
+      "threshold_coverage": 0.873646,
+      "composite_score": 0.808582,
+      "ref_offset_index": 6496
+    },
+    {
+      "rank": 2,
+      "ref_start_utc": "2026-05-03T07:14:26+00:00",
+      "ref_end_utc": "2026-05-03T07:19:02+00:00",
+      "correlation": 0.724919,
+      "threshold_coverage": 0.848375,
+      "composite_score": 0.798993,
+      "ref_offset_index": 7999
+    },
+    {
+      "rank": 3,
+      "ref_start_utc": "2026-03-21T17:46:46+00:00",
+      "ref_end_utc": "2026-03-21T17:51:22+00:00",
+      "correlation": 0.707016,
+      "threshold_coverage": 0.841155,
+      "composite_score": 0.787499,
+      "ref_offset_index": 6502
+    }
+  ]
+}
