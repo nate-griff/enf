@@ -62,30 +62,59 @@ Extracts Electric Network Frequency using Quadratically Interpolated FFT (QIFFT)
 python enf_extract.py --input FILE [--output OUTPUT.csv] [options]
 ```
 
+Reads WAV and FLAC directly. Other audio formats and video inputs are converted to a temporary mono 48 kHz WAV with `ffmpeg`, so `ffmpeg` must be installed and available on `PATH` for those cases.
+
 **Key Arguments:**
 - `--input` (required): Audio or video file
 - `--output`: Output CSV path (default: `{input_stem}_enf.csv`)
-- `--nominal`: Nominal grid frequency (default: 60 Hz)
+- `--nominal`: Expected fundamental grid frequency in Hz (default: 60). This sets the center of the extraction search. Change it for 50 Hz systems or when you know the source is not standard North American mains.
 - `--harmonic`: Which harmonic to extract (default: 2 — second harmonic at 120 Hz)
   - Harmonic 2 is recommended — much cleaner results with less noise contamination
   - Result is automatically divided back to fundamental (60 Hz)
-- `--bandwidth`: Half-bandwidth in Hz around target (default: 0.5)
-- `--frame-sec`: Frame duration in seconds (default: 1.0)
-- `--overlap`: Frame overlap fraction 0–1 (default: 0.5)
-- `--pad-factor`: Zero-padding multiplier for FFT (default: 16)
-- `--median-window`: Median filter window size (default: 3, 0 to disable)
+- `--bandwidth`: Half-bandwidth in Hz around the target harmonic for both the bandpass filter and FFT peak search (default: 0.5). Narrow it to reject nearby tones; widen it when the ENF drifts more or the nominal is less certain.
+- `--frame-sec`: Duration of each FFT analysis frame in seconds (default: 1.0). Longer frames usually give steadier frequency estimates but blur faster changes. Shorter frames react faster but are noisier.
+- `--overlap`: Fraction of each frame reused by the next frame, from 0 to 1 (default: 0.5). Higher overlap produces more intermediate estimates that are later averaged into the roughly 1 Hz output trace.
+- `--pad-factor`: Zero-padding multiplier before the FFT (default: 16). This improves bin spacing for QIFFT interpolation but mainly trades runtime for smoother peak placement.
+- `--median-window`: Median filter width applied after aggregation (default: 3, `0` to disable). Use it to suppress isolated spikes without smearing the whole trace the way a moving average can.
+- `--multi-harmonic`: Experimental mode that extracts multiple harmonics and fuses them into one 60 Hz trace.
+- `--harmonics`: Comma-separated harmonic list for experimental fusion (default: `1,2,3`). Requires `--multi-harmonic`.
+- `--harmonic-fusion`: Experimental fusion method: `weighted`, `vote`, or `mean` (default: `weighted`). Requires `--multi-harmonic`.
+- `--confidence-output`: Append `confidence_score` to the output CSV. In single-harmonic mode this is `1.0` for each row; in multi-harmonic mode it reflects agreement between harmonics.
+- `--detail-output`: Write per-harmonic CSVs like `trace_h1.csv` next to the main output. Requires `--multi-harmonic`.
 - `--export-figure`: Save a two-panel PNG with a 0-250 Hz spectrogram and the final extracted ENF trace
 - `--figure-output`: Explicit path for the PNG figure; when provided, figure export is enabled automatically
+
+**Experimental multi-harmonic mode:**
+
+- The default experimental set is harmonics 1, 2, and 3.
+- Each harmonic is extracted with the existing single-harmonic pipeline, smoothed individually, then fused into one trace.
+- `weighted` favors harmonic 2, then 3, then 1.
+- `vote` returns one of the actual harmonic estimates rather than inventing a midpoint when two harmonics disagree.
+- On low-sample-rate audio, unsupported default harmonics are skipped with a warning. If you explicitly request an unsupported harmonic, extraction fails cleanly instead of crashing.
+
+**Practical tuning guide:**
+
+| Goal | What to change |
+| --- | --- |
+| Cleaner trace from a steady recording | Increase `--frame-sec`, keep moderate/high `--overlap`, and use a small `--median-window` such as 3 or 5 |
+| Track faster variation or avoid over-smoothing | Decrease `--frame-sec`, keep `--median-window` small, or set `--median-window 0` |
+| Tolerate larger drift or uncertain nominal frequency | Increase `--bandwidth` slightly |
+| Reduce random one-sample spikes | Increase `--median-window` modestly |
+| Improve peak interpolation without changing the basic time resolution | Increase `--pad-factor`, keeping in mind the runtime cost |
+| Try the experimental fused extractor on weak/noisy samples | Add `--multi-harmonic`, and compare `weighted` vs `vote` |
 
 **Output CSV columns:**
 - `offset_seconds`: Seconds from start of recording
 - `frequency_hz`: Estimated ENF frequency
+- `confidence_score`: Optional extraction-confidence column when `--confidence-output` is used
 
 **Example:**
 ```bash
 python enf_extract.py --input fan.wav --output fan_enf.csv --harmonic 2 --bandwidth 0.5
 python enf_extract.py --input fan.wav --output fan_enf.csv --export-figure
 python enf_extract.py --input fan.wav --output fan_enf.csv --figure-output fan_overview.png
+python enf_extract.py --input fan.wav --output fan_enf.csv --multi-harmonic --harmonic-fusion weighted --confidence-output
+python enf_extract.py --input fan.wav --output fan_enf.csv --multi-harmonic --harmonic-fusion vote --detail-output
 ```
 
 ### `enf_compare.py` — Grid Matching
@@ -198,6 +227,8 @@ The `enf_extract.py` script uses **Quadratically Interpolated FFT (QIFFT)** for 
 6. **Aggregation**: Average multiple estimates per second to match grid cadence
 7. **Smoothing**: Optional median filter for noise reduction
 
+In experimental `--multi-harmonic` mode, the extractor runs that same per-harmonic path for each requested harmonic, smooths each harmonic trace, then fuses them into a single 60 Hz estimate with an optional confidence score.
+
 **Formula:** For magnitude bins `α`, `β`, `γ` at peak `k`:
 ```
 δ = 0.5 × (α - γ) / (α - 2β + γ)
@@ -239,6 +270,8 @@ matplotlib>=3.7.0
 opencv-python>=4.8.0  # For image extraction (freqgauge_extract.py)
 requests>=2.28.0      # For image collection (collect_freqgauge_service.py)
 ```
+
+**External tool:** install `ffmpeg` separately if you want `enf_extract.py` to accept video files or audio formats other than WAV/FLAC.
 
 ## Data Sources
 
