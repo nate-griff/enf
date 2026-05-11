@@ -30,7 +30,7 @@ pip install -r requirements.txt
 **1. Extract ENF from audio/video:**
 ```bash
 python enf_extract.py --input recording.wav --output trace.csv
-python enf_extract.py --input recording.mp4 --output trace.csv  # video auto-converts
+python enf_extract.py --input recording.mp4 --output trace.csv  # requires ffmpeg on PATH
 python enf_extract.py --input recording.wav --output trace.csv --export-figure
 python enf_extract.py --input recording.wav --output trace.csv --figure-output trace_overview.png
 ```
@@ -62,20 +62,32 @@ Extracts Electric Network Frequency using Quadratically Interpolated FFT (QIFFT)
 python enf_extract.py --input FILE [--output OUTPUT.csv] [options]
 ```
 
+Reads WAV and FLAC directly. Other audio formats and video inputs are converted to a temporary mono 48 kHz WAV with `ffmpeg`, so `ffmpeg` must be installed and available on `PATH` for those cases.
+
 **Key Arguments:**
 - `--input` (required): Audio or video file
 - `--output`: Output CSV path (default: `{input_stem}_enf.csv`)
-- `--nominal`: Nominal grid frequency (default: 60 Hz)
+- `--nominal`: Expected fundamental grid frequency in Hz (default: 60). This is the center frequency the extractor assumes before it filters or searches for peaks. Change it when working with 50 Hz systems or any source where the mains frequency is known to be different; if this is wrong, the extractor looks in the wrong part of the spectrum.
 - `--harmonic`: Which harmonic to extract (default: 2 — second harmonic at 120 Hz)
   - Harmonic 2 is recommended — much cleaner results with less noise contamination
   - Result is automatically divided back to fundamental (60 Hz)
-- `--bandwidth`: Half-bandwidth in Hz around target (default: 0.5)
-- `--frame-sec`: Frame duration in seconds (default: 1.0)
-- `--overlap`: Frame overlap fraction 0–1 (default: 0.5)
-- `--pad-factor`: Zero-padding multiplier for FFT (default: 16)
-- `--median-window`: Median filter window size (default: 3, 0 to disable)
+- `--bandwidth`: Half-bandwidth in Hz around the target harmonic for both the bandpass filter and FFT peak search (default: 0.5). With `--nominal 60 --harmonic 2`, the default searches 119.5-120.5 Hz and then divides back to the 60 Hz fundamental. Use a narrower bandwidth to reject nearby tones and motor noise; widen it when the recording is driftier, the nominal is uncertain, or the ENF is not staying tightly centered.
+- `--frame-sec`: Duration of each FFT analysis frame in seconds (default: 1.0). Longer frames usually give steadier and more precise frequency estimates because they contain more cycles, but they blur short-term ENF changes and assume the frequency stays fairly stable inside the frame. Shorter frames react faster to changes but are noisier.
+- `--overlap`: Fraction of each frame reused by the next frame, from 0 to 1 (default: 0.5). Higher overlap creates more intermediate estimates that are later averaged into the approximately 1 Hz output trace, which can stabilize noisy material at the cost of extra compute and more redundant measurements. Lower overlap is faster but gives fewer estimates to average.
+- `--pad-factor`: Zero-padding multiplier before the FFT (default: 16). This reduces FFT bin spacing and helps QIFFT place the peak more smoothly between bins, but it does not add new signal information; it mainly trades runtime for finer interpolation. Values in the 8-16 range are usually the practical sweet spot.
+- `--median-window`: Median filter width applied after the trace is aggregated to roughly one estimate per second (default: 3, `0` to disable). Use it to remove isolated spikes without pulling the whole trace the way a moving average can. Larger windows suppress more outliers but can flatten real short ENF excursions; even values are rounded up internally to the next odd window.
 - `--export-figure`: Save a two-panel PNG with a 0-250 Hz spectrogram and the final extracted ENF trace
 - `--figure-output`: Explicit path for the PNG figure; when provided, figure export is enabled automatically
+
+**Practical tuning guide:**
+
+| Goal | What to change |
+| --- | --- |
+| Cleaner trace from a steady recording | Increase `--frame-sec`, keep moderate/high `--overlap`, and use a small `--median-window` such as 3 or 5 |
+| Track faster variation or avoid over-smoothing | Decrease `--frame-sec`, keep `--median-window` small, or set `--median-window 0` |
+| Tolerate larger drift or uncertain nominal frequency | Increase `--bandwidth` slightly |
+| Reduce random one-sample spikes | Increase `--median-window` modestly |
+| Improve peak interpolation without changing the basic time resolution | Increase `--pad-factor`, keeping in mind the runtime cost |
 
 **Output CSV columns:**
 - `offset_seconds`: Seconds from start of recording
@@ -159,6 +171,7 @@ python enf_view.py --trace trace.csv --grid-dir source_data/grid_data --region E
 - **Scroll/Zoom**: Log-scale zoom slider and time-position scroll
 - **Score display**: Shows correlation, coverage %, and composite score
 - **UTC info**: Displays reference time window in plot title
+- **Grid-dir auto-discovery**: When opened with `--results`, the viewer will try to find `source_data/grid_data` by walking up from the results JSON; pass `--grid-dir` explicitly if your data lives elsewhere
 
 **Controls:**
 - **Match combobox**: Jump to any top match
@@ -177,9 +190,10 @@ python enf_view.py --trace trace.csv --grid-dir source_data/grid_data --region E
 ├── freqgauge_extract.py     # Extract grid data from FNET images
 ├── collect_freqgauge_service.py  # Continuous FNET image collection
 ├── requirements.txt         # Python dependencies
-├── Project-Plan.md          # Detailed technical plan
+├── sample_data/
+│   ├── audio_samples/       # Example audio recordings
+│   └── video_samples/       # Example video recordings
 └── source_data/
-    ├── audio_samples/       # Test recordings
     ├── grid_data/           # Daily grid CSVs from FNET
     └── scraped_images/      # FNET frequency gauge images (from collector)
 ```
@@ -232,13 +246,15 @@ The `enf_compare.py` script uses FFT-accelerated sliding Pearson correlation:
 ## Dependencies
 
 ```
+requests>=2.28.0      # FNET image collection
 numpy>=1.24.0
+opencv-python>=4.8.0  # Image extraction (freqgauge_extract.py)
 pandas>=2.0.0
-scipy>=1.11.0
-matplotlib>=3.7.0
-opencv-python>=4.8.0  # For image extraction (freqgauge_extract.py)
-requests>=2.28.0      # For image collection (collect_freqgauge_service.py)
+matplotlib>=3.7.0     # GUI viewers and exported figures
+scipy>=1.11.0         # ENF extraction and comparison
 ```
+
+**External tool:** install `ffmpeg` separately if you want `enf_extract.py` to accept video files or audio formats other than WAV/FLAC.
 
 ## Data Sources
 
