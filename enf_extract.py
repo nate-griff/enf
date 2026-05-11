@@ -126,6 +126,8 @@ def write_summary_figure(
         Fs=sr,
         noverlap=noverlap,
         cmap="viridis",
+        vmin=-80,
+        vmax=0,
     )
     spec_ax.set_title("Spectrogram")
     spec_ax.set_xlabel("Time (s)")

@@ -1,0 +1,35 @@
+{
+  "trace_file": "source_data\\audio_samples\\Microwave\\microwave.csv",
+  "region": "EI",
+  "threshold_hz": 0.01,
+  "query_length_seconds": 243,
+  "matches": [
+    {
+      "rank": 1,
+      "ref_start_utc": "2026-03-26T03:46:02+00:00",
+      "ref_end_utc": "2026-03-26T03:50:04+00:00",
+      "correlation": 1.0,
+      "threshold_coverage": 0.061728,
+      "composite_score": 0.624691,
+      "ref_offset_index": 446666
+    },
+    {
+      "rank": 2,
+      "ref_start_utc": "2026-03-26T03:45:28+00:00",
+      "ref_end_utc": "2026-03-26T03:49:30+00:00",
+      "correlation": 1.0,
+      "threshold_coverage": 0.061728,
+      "composite_score": 0.624691,
+      "ref_offset_index": 446632
+    },
+    {
+      "rank": 3,
+      "ref_start_utc": "2026-04-16T02:51:50+00:00",
+      "ref_end_utc": "2026-04-16T02:55:52+00:00",
+      "correlation": 1.0,
+      "threshold_coverage": 0.061728,
+      "composite_score": 0.624691,
+      "ref_offset_index": 2257814
+    }
+  ]
+}

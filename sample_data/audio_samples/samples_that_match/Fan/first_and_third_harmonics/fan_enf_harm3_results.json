@@ -1,0 +1,98 @@
+{
+  "trace_file": "source_data\\audio_samples\\fan3\\fan_enf_harm3.csv",
+  "region": "EI",
+  "threshold_hz": 0.01,
+  "query_length_seconds": 340,
+  "matches": [
+    {
+      "rank": 1,
+      "ref_start_utc": "2026-03-31T04:37:25+00:00",
+      "ref_end_utc": "2026-03-31T04:43:04+00:00",
+      "correlation": 0.384688,
+      "threshold_coverage": 0.170588,
+      "composite_score": 0.256228,
+      "ref_offset_index": 1364
+    },
+    {
+      "rank": 2,
+      "ref_start_utc": "2026-03-28T06:47:17+00:00",
+      "ref_end_utc": "2026-03-28T06:52:56+00:00",
+      "correlation": 0.376017,
+      "threshold_coverage": 0.173529,
+      "composite_score": 0.254524,
+      "ref_offset_index": 5844
+    },
+    {
+      "rank": 3,
+      "ref_start_utc": "2026-03-31T04:37:18+00:00",
+      "ref_end_utc": "2026-03-31T04:42:57+00:00",
+      "correlation": 0.363401,
+      "threshold_coverage": 0.179412,
+      "composite_score": 0.253007,
+      "ref_offset_index": 1357
+    },
+    {
+      "rank": 4,
+      "ref_start_utc": "2026-04-10T12:30:49+00:00",
+      "ref_end_utc": "2026-04-10T12:36:28+00:00",
+      "correlation": 0.445764,
+      "threshold_coverage": 0.123529,
+      "composite_score": 0.252423,
+      "ref_offset_index": 258
+    },
+    {
+      "rank": 5,
+      "ref_start_utc": "2026-04-20T02:38:15+00:00",
+      "ref_end_utc": "2026-04-20T02:43:54+00:00",
+      "correlation": 0.399982,
+      "threshold_coverage": 0.15,
+      "composite_score": 0.249993,
+      "ref_offset_index": 1707
+    },
+    {
+      "rank": 6,
+      "ref_start_utc": "2026-03-23T05:13:27+00:00",
+      "ref_end_utc": "2026-03-23T05:19:06+00:00",
+      "correlation": 0.317199,
+      "threshold_coverage": 0.197059,
+      "composite_score": 0.245115,
+      "ref_offset_index": 2286
+    },
+    {
+      "rank": 7,
+      "ref_start_utc": "2026-04-16T06:54:15+00:00",
+      "ref_end_utc": "2026-04-16T06:59:54+00:00",
+      "correlation": 0.422447,
+      "threshold_coverage": 0.126471,
+      "composite_score": 0.244861,
+      "ref_offset_index": 204
+    },
+    {
+      "rank": 8,
+      "ref_start_utc": "2026-04-04T05:11:58+00:00",
+      "ref_end_utc": "2026-04-04T05:17:37+00:00",
+      "correlation": 0.349263,
+      "threshold_coverage": 0.173529,
+      "composite_score": 0.243823,
+      "ref_offset_index": 821
+    },
+    {
+      "rank": 9,
+      "ref_start_utc": "2026-03-25T17:05:17+00:00",
+      "ref_end_utc": "2026-03-25T17:10:56+00:00",
+      "correlation": 0.349202,
+      "threshold_coverage": 0.173529,
+      "composite_score": 0.243799,
+      "ref_offset_index": 379
+    },
+    {
+      "rank": 10,
+      "ref_start_utc": "2026-04-02T07:05:58+00:00",
+      "ref_end_utc": "2026-04-02T07:11:37+00:00",
+      "correlation": 0.352914,
+      "threshold_coverage": 0.167647,
+      "composite_score": 0.241754,
+      "ref_offset_index": 1085
+    }
+  ]
+}

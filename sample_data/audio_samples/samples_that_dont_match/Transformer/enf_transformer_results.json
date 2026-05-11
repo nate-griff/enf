@@ -1,0 +1,35 @@
+{
+  "trace_file": "source_data\\audio_samples\\Transformer\\enf_transformer.csv",
+  "region": "EI",
+  "threshold_hz": 0.01,
+  "query_length_seconds": 121,
+  "matches": [
+    {
+      "rank": 1,
+      "ref_start_utc": "2026-03-31T07:10:57+00:00",
+      "ref_end_utc": "2026-03-31T07:12:57+00:00",
+      "correlation": 0.611214,
+      "threshold_coverage": 0.677686,
+      "composite_score": 0.651097,
+      "ref_offset_index": 2349
+    },
+    {
+      "rank": 2,
+      "ref_start_utc": "2026-04-05T06:50:58+00:00",
+      "ref_end_utc": "2026-04-05T06:52:58+00:00",
+      "correlation": 0.500799,
+      "threshold_coverage": 0.694215,
+      "composite_score": 0.616849,
+      "ref_offset_index": 269
+    },
+    {
+      "rank": 3,
+      "ref_start_utc": "2026-04-29T11:13:01+00:00",
+      "ref_end_utc": "2026-04-29T11:15:01+00:00",
+      "correlation": 0.500476,
+      "threshold_coverage": 0.694215,
+      "composite_score": 0.616719,
+      "ref_offset_index": 321
+    }
+  ]
+}

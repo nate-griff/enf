@@ -1,0 +1,53 @@
+{
+  "trace_file": "source_data\\audio_samples\\fan_enf.csv",
+  "region": "EI",
+  "threshold_hz": 0.01,
+  "query_length_seconds": 340,
+  "matches": [
+    {
+      "rank": 1,
+      "ref_start_utc": "2026-04-20T16:36:05+00:00",
+      "ref_end_utc": "2026-04-20T16:41:44+00:00",
+      "correlation": 0.71303,
+      "threshold_coverage": 0.573529,
+      "composite_score": 0.65723,
+      "ref_offset_index": 59805
+    },
+    {
+      "rank": 2,
+      "ref_start_utc": "2026-04-20T16:36:06+00:00",
+      "ref_end_utc": "2026-04-20T16:41:45+00:00",
+      "correlation": 0.713024,
+      "threshold_coverage": 0.567647,
+      "composite_score": 0.654873,
+      "ref_offset_index": 59806
+    },
+    {
+      "rank": 3,
+      "ref_start_utc": "2026-04-20T16:36:04+00:00",
+      "ref_end_utc": "2026-04-20T16:41:43+00:00",
+      "correlation": 0.709142,
+      "threshold_coverage": 0.570588,
+      "composite_score": 0.653721,
+      "ref_offset_index": 59804
+    },
+    {
+      "rank": 4,
+      "ref_start_utc": "2026-04-20T16:36:07+00:00",
+      "ref_end_utc": "2026-04-20T16:41:46+00:00",
+      "correlation": 0.710863,
+      "threshold_coverage": 0.55,
+      "composite_score": 0.646518,
+      "ref_offset_index": 59807
+    },
+    {
+      "rank": 5,
+      "ref_start_utc": "2026-04-20T16:36:03+00:00",
+      "ref_end_utc": "2026-04-20T16:41:42+00:00",
+      "correlation": 0.695351,
+      "threshold_coverage": 0.570588,
+      "composite_score": 0.645446,
+      "ref_offset_index": 59803
+    }
+  ]
+}
