@@ -1,0 +1,26 @@
+{
+  "trace_file": "sample_data\\audio_samples\\samples_that_dont_match\\macbook_pro_bathroom_exhaust_fan\\multi-harmonic\\weighted\\trace.csv",
+  "region": "EI",
+  "threshold_hz": 0.01,
+  "query_length_seconds": 316,
+  "matches": [
+    {
+      "rank": 1,
+      "ref_start_utc": "2026-04-19T21:06:58+00:00",
+      "ref_end_utc": "2026-04-19T21:12:13+00:00",
+      "correlation": 0.379022,
+      "threshold_coverage": 0.332278,
+      "composite_score": 0.350976,
+      "ref_offset_index": 214
+    },
+    {
+      "rank": 2,
+      "ref_start_utc": "2026-05-06T05:00:16+00:00",
+      "ref_end_utc": "2026-05-06T05:05:31+00:00",
+      "correlation": 0.374187,
+      "threshold_coverage": 0.313291,
+      "composite_score": 0.33765,
+      "ref_offset_index": 1020
+    }
+  ]
+}
