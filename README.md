@@ -288,21 +288,8 @@ python freqgauge_view_csv.py source_data/grid_data/merged.csv
 The tool was validated end-to-end with:
 - **Test recording**: `fan.wav` — 340 seconds, 48 kHz stereo, recorded 2026-04-20 12:36 PM EST
 - **Reference data**: EI grid data for 2026-04-20
-- **Result**: Top match found at **16:36:05 UTC** (within 5 seconds of true time)
-  - Correlation: 0.713
-  - Coverage: 57%
-  - Composite score: 0.629
-  - All top 5 matches within ±7 seconds of correct time
+- **Result**: Top match found at **16:36:05 UTC** 
 
-## Future Work
-
-From the project plan:
-- Expand to 50 Hz grids (international support)
-- Automated geographic grid detection
-- Web-based deployment
-- Large-scale benchmark dataset
-- Forensic-grade confidence metrics
-- GPU-accelerated matching for large datasets
 
 ## Data Sources (Details)
 Data was scraped from FNET's live grid data
