@@ -67,17 +67,30 @@ Reads WAV and FLAC directly. Other audio formats and video inputs are converted 
 **Key Arguments:**
 - `--input` (required): Audio or video file
 - `--output`: Output CSV path (default: `{input_stem}_enf.csv`)
-- `--nominal`: Expected fundamental grid frequency in Hz (default: 60). This is the center frequency the extractor assumes before it filters or searches for peaks. Change it when working with 50 Hz systems or any source where the mains frequency is known to be different; if this is wrong, the extractor looks in the wrong part of the spectrum.
+- `--nominal`: Expected fundamental grid frequency in Hz (default: 60). This sets the center of the extraction search. Change it for 50 Hz systems or when you know the source is not standard North American mains.
 - `--harmonic`: Which harmonic to extract (default: 2 — second harmonic at 120 Hz)
   - Harmonic 2 is recommended — much cleaner results with less noise contamination
   - Result is automatically divided back to fundamental (60 Hz)
-- `--bandwidth`: Half-bandwidth in Hz around the target harmonic for both the bandpass filter and FFT peak search (default: 0.5). With `--nominal 60 --harmonic 2`, the default searches 119.5-120.5 Hz and then divides back to the 60 Hz fundamental. Use a narrower bandwidth to reject nearby tones and motor noise; widen it when the recording is driftier, the nominal is uncertain, or the ENF is not staying tightly centered.
-- `--frame-sec`: Duration of each FFT analysis frame in seconds (default: 1.0). Longer frames usually give steadier and more precise frequency estimates because they contain more cycles, but they blur short-term ENF changes and assume the frequency stays fairly stable inside the frame. Shorter frames react faster to changes but are noisier.
-- `--overlap`: Fraction of each frame reused by the next frame, from 0 to 1 (default: 0.5). Higher overlap creates more intermediate estimates that are later averaged into the approximately 1 Hz output trace, which can stabilize noisy material at the cost of extra compute and more redundant measurements. Lower overlap is faster but gives fewer estimates to average.
-- `--pad-factor`: Zero-padding multiplier before the FFT (default: 16). This reduces FFT bin spacing and helps QIFFT place the peak more smoothly between bins, but it does not add new signal information; it mainly trades runtime for finer interpolation. Values in the 8-16 range are usually the practical sweet spot.
-- `--median-window`: Median filter width applied after the trace is aggregated to roughly one estimate per second (default: 3, `0` to disable). Use it to remove isolated spikes without pulling the whole trace the way a moving average can. Larger windows suppress more outliers but can flatten real short ENF excursions; even values are rounded up internally to the next odd window.
+- `--bandwidth`: Half-bandwidth in Hz around the target harmonic for both the bandpass filter and FFT peak search (default: 0.5). Narrow it to reject nearby tones; widen it when the ENF drifts more or the nominal is less certain.
+- `--frame-sec`: Duration of each FFT analysis frame in seconds (default: 1.0). Longer frames usually give steadier frequency estimates but blur faster changes. Shorter frames react faster but are noisier.
+- `--overlap`: Fraction of each frame reused by the next frame, from 0 to 1 (default: 0.5). Higher overlap produces more intermediate estimates that are later averaged into the roughly 1 Hz output trace.
+- `--pad-factor`: Zero-padding multiplier before the FFT (default: 16). This improves bin spacing for QIFFT interpolation but mainly trades runtime for smoother peak placement.
+- `--median-window`: Median filter width applied after aggregation (default: 3, `0` to disable). Use it to suppress isolated spikes without smearing the whole trace the way a moving average can.
+- `--multi-harmonic`: Experimental mode that extracts multiple harmonics and fuses them into one 60 Hz trace.
+- `--harmonics`: Comma-separated harmonic list for experimental fusion (default: `1,2,3`). Requires `--multi-harmonic`.
+- `--harmonic-fusion`: Experimental fusion method: `weighted`, `vote`, or `mean` (default: `weighted`). Requires `--multi-harmonic`.
+- `--confidence-output`: Append `confidence_score` to the output CSV. In single-harmonic mode this is `1.0` for each row; in multi-harmonic mode it reflects agreement between harmonics.
+- `--detail-output`: Write per-harmonic CSVs like `trace_h1.csv` next to the main output. Requires `--multi-harmonic`.
 - `--export-figure`: Save a two-panel PNG with a 0-250 Hz spectrogram and the final extracted ENF trace
 - `--figure-output`: Explicit path for the PNG figure; when provided, figure export is enabled automatically
+
+**Experimental multi-harmonic mode:**
+
+- The default experimental set is harmonics 1, 2, and 3.
+- Each harmonic is extracted with the existing single-harmonic pipeline, smoothed individually, then fused into one trace.
+- `weighted` favors harmonic 2, then 3, then 1.
+- `vote` returns one of the actual harmonic estimates rather than inventing a midpoint when two harmonics disagree.
+- On low-sample-rate audio, unsupported default harmonics are skipped with a warning. If you explicitly request an unsupported harmonic, extraction fails cleanly instead of crashing.
 
 **Practical tuning guide:**
 
@@ -88,16 +101,20 @@ Reads WAV and FLAC directly. Other audio formats and video inputs are converted 
 | Tolerate larger drift or uncertain nominal frequency | Increase `--bandwidth` slightly |
 | Reduce random one-sample spikes | Increase `--median-window` modestly |
 | Improve peak interpolation without changing the basic time resolution | Increase `--pad-factor`, keeping in mind the runtime cost |
+| Try the experimental fused extractor on weak/noisy samples | Add `--multi-harmonic`, and compare `weighted` vs `vote` |
 
 **Output CSV columns:**
 - `offset_seconds`: Seconds from start of recording
 - `frequency_hz`: Estimated ENF frequency
+- `confidence_score`: Optional extraction-confidence column when `--confidence-output` is used
 
 **Example:**
 ```bash
 python enf_extract.py --input fan.wav --output fan_enf.csv --harmonic 2 --bandwidth 0.5
 python enf_extract.py --input fan.wav --output fan_enf.csv --export-figure
 python enf_extract.py --input fan.wav --output fan_enf.csv --figure-output fan_overview.png
+python enf_extract.py --input fan.wav --output fan_enf.csv --multi-harmonic --harmonic-fusion weighted --confidence-output
+python enf_extract.py --input fan.wav --output fan_enf.csv --multi-harmonic --harmonic-fusion vote --detail-output
 ```
 
 ### `enf_compare.py` — Grid Matching
@@ -211,6 +228,8 @@ The `enf_extract.py` script uses **Quadratically Interpolated FFT (QIFFT)** for 
 5. **QIFFT interpolation**: Quadratic fit on peak and neighbors for sub-bin accuracy
 6. **Aggregation**: Average multiple estimates per second to match grid cadence
 7. **Smoothing**: Optional median filter for noise reduction
+
+In experimental `--multi-harmonic` mode, the extractor runs that same per-harmonic path for each requested harmonic, smooths each harmonic trace, then fuses them into a single 60 Hz estimate with an optional confidence score.
 
 **Formula:** For magnitude bins `α`, `β`, `γ` at peak `k`:
 ```
