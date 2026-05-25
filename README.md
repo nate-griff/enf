@@ -51,6 +51,14 @@ python enf_compare.py \
 python enf_view.py --results results.json
 ```
 
+**4. Benchmark extraction techniques across built-in cases:**
+```bash
+python enf_benchmark.py --output-dir benchmark_runs/default-suite
+python enf_benchmark.py --techniques baseline,dp-multitaper-snr-multi --cases fan-iphone-apr20,microwave-apr20
+```
+
+Most built-in benchmark cases are tracked `.m4a` recordings, so a full default run needs `ffmpeg` on `PATH` just like other non-WAV/non-FLAC extraction inputs. In a normal checkout without `ffmpeg`, the harness still runs any directly supported cases and records per-case extraction failures in the summary instead of aborting the whole benchmark.
+
 ## Tools
 
 ### `enf_extract.py` — ENF Extraction from Audio/Video
@@ -75,11 +83,13 @@ Reads WAV and FLAC directly. Other audio formats and video inputs are converted 
 - `--frame-sec`: Duration of each FFT analysis frame in seconds (default: 1.0). Longer frames usually give steadier frequency estimates but blur faster changes. Shorter frames react faster but are noisier.
 - `--overlap`: Fraction of each frame reused by the next frame, from 0 to 1 (default: 0.5). Higher overlap produces more intermediate estimates that are later averaged into the roughly 1 Hz output trace.
 - `--pad-factor`: Zero-padding multiplier before the FFT (default: 16). This improves bin spacing for QIFFT interpolation but mainly trades runtime for smoother peak placement.
+- `--tracking-mode`: Frame-to-frame ridge selection mode: `peak` for the original frame-independent maximum or `dp` for dynamic-programming ridge tracking with a continuity penalty (default: `peak`).
+- `--spectrum-estimator`: Spectrum builder for each frame: `fft` for the original single-window spectrum or `multitaper` for DPSS multi-taper averaging in weaker/noisier recordings (default: `fft`).
 - `--median-window`: Median filter width applied after aggregation (default: 3, `0` to disable). Use it to suppress isolated spikes without smearing the whole trace the way a moving average can.
 - `--multi-harmonic`: Experimental mode that extracts multiple harmonics and fuses them into one 60 Hz trace.
 - `--harmonics`: Comma-separated harmonic list for experimental fusion (default: `1,2,3`). Requires `--multi-harmonic`.
-- `--harmonic-fusion`: Experimental fusion method: `weighted`, `vote`, or `mean` (default: `weighted`). Requires `--multi-harmonic`.
-- `--confidence-output`: Append `confidence_score` to the output CSV. In single-harmonic mode this is `1.0` for each row; in multi-harmonic mode it reflects agreement between harmonics.
+- `--harmonic-fusion`: Experimental fusion method: `weighted`, `vote`, `mean`, or `snr-weighted` (default: `weighted`). Requires `--multi-harmonic`.
+- `--confidence-output`: Append `confidence_score` to the output CSV. In both single- and multi-harmonic mode this is normalized to the 0-1 range, where larger values indicate a stronger or more self-consistent estimate.
 - `--detail-output`: Write per-harmonic CSVs like `trace_h1.csv` next to the main output. Requires `--multi-harmonic`.
 - `--export-figure`: Save a two-panel PNG with a 0-250 Hz spectrogram and the final extracted ENF trace
 - `--figure-output`: Explicit path for the PNG figure; when provided, figure export is enabled automatically
@@ -90,6 +100,7 @@ Reads WAV and FLAC directly. Other audio formats and video inputs are converted 
 - Each harmonic is extracted with the existing single-harmonic pipeline, smoothed individually, then fused into one trace.
 - `weighted` favors harmonic 2, then 3, then 1.
 - `vote` returns one of the actual harmonic estimates rather than inventing a midpoint when two harmonics disagree.
+- `snr-weighted` uses measured local harmonic quality instead of a fixed harmonic priority.
 - On low-sample-rate audio, unsupported default harmonics are skipped with a warning. If you explicitly request an unsupported harmonic, extraction fails cleanly instead of crashing.
 
 **Practical tuning guide:**
@@ -101,6 +112,8 @@ Reads WAV and FLAC directly. Other audio formats and video inputs are converted 
 | Tolerate larger drift or uncertain nominal frequency | Increase `--bandwidth` slightly |
 | Reduce random one-sample spikes | Increase `--median-window` modestly |
 | Improve peak interpolation without changing the basic time resolution | Increase `--pad-factor`, keeping in mind the runtime cost |
+| Prefer a globally smoother, continuity-aware track | Switch to `--tracking-mode dp` |
+| Reduce variance on weak but still narrowband ENF | Switch to `--spectrum-estimator multitaper` |
 | Try the experimental fused extractor on weak/noisy samples | Add `--multi-harmonic`, and compare `weighted` vs `vote` |
 
 **Output CSV columns:**
@@ -113,8 +126,10 @@ Reads WAV and FLAC directly. Other audio formats and video inputs are converted 
 python enf_extract.py --input fan.wav --output fan_enf.csv --harmonic 2 --bandwidth 0.5
 python enf_extract.py --input fan.wav --output fan_enf.csv --export-figure
 python enf_extract.py --input fan.wav --output fan_enf.csv --figure-output fan_overview.png
+python enf_extract.py --input fan.wav --output fan_enf.csv --tracking-mode dp --spectrum-estimator multitaper
 python enf_extract.py --input fan.wav --output fan_enf.csv --multi-harmonic --harmonic-fusion weighted --confidence-output
 python enf_extract.py --input fan.wav --output fan_enf.csv --multi-harmonic --harmonic-fusion vote --detail-output
+python enf_extract.py --input fan.wav --output fan_enf.csv --multi-harmonic --harmonic-fusion snr-weighted --confidence-output
 ```
 
 ### `enf_compare.py` — Grid Matching
@@ -196,12 +211,59 @@ python enf_view.py --trace trace.csv --grid-dir source_data/grid_data --region E
 - **Zoom slider**: Change visible time range (log scale, narrow ← → wide)
 - **Prev/Next buttons**: Step through ranked matches
 
+### `enf_benchmark.py` — Technique Benchmark Harness
+
+Runs extraction plus matching across a matrix of built-in benchmark cases and named technique presets, then writes machine-readable JSON and CSV summaries for repeatable comparison work.
+
+**Usage:**
+```bash
+python enf_benchmark.py [--output-dir DIR] [--cases CASE1,CASE2] [--techniques PRESET1,PRESET2]
+python enf_benchmark.py --list-cases
+python enf_benchmark.py --list-techniques
+```
+
+**Built-in behavior:**
+- Uses tracked `sample_data` recordings by default, so a normal checkout can run the harness without authoring a manifest; however, most built-in cases are `.m4a` and therefore need `ffmpeg` on `PATH`
+- Includes anchored exact-match cases plus harder same-date and date-window cases
+- Writes per-case trace CSVs and comparison JSON artifacts alongside:
+  - `benchmark_summary.json`
+  - `benchmark_summary.csv`
+- If one case fails during extraction or comparison, the harness records that failure in the summary and continues with the remaining case/preset runs
+
+**Included presets:**
+- `baseline`
+- `dp`
+- `multitaper`
+- `dp-multitaper`
+- `snr-multi`
+- `dp-multitaper-snr-multi`
+
+**Observed benchmark notes from the current suite:**
+- `multitaper` is the strongest overall addition so far: it improved both anchored fan samples, gave the best score on the May 11 Bose sample, and gave the best score on the May 12 bedroom-fan demo.
+- `dp-multitaper` helped the April 23 transformer recording the most, improving the top composite score from `0.5847` to `0.6608`.
+- The new `snr-multi` presets remain experimental; they only slightly helped the microwave sample and underperformed badly on most other cases.
+- Filename/date alignment is good for the strongest anchored examples:
+  - `fan_on_iphone_apr20at11_36.wav` matched `2026-04-20T16:36:06Z`, essentially the known April 20 target.
+  - `fan_on_ipad_apr23at11_18.m4a` matched `2026-04-23T16:18:37Z`; the date aligns, but the UTC-to-local interpretation lands closer to `12:18` EDT than the `11:18` shown in the filename.
+  - `Bose_headphones_next_to_fan_May11at2_24.m4a` and `BedroomFan-May12at201pm.m4a` both landed inside their intended same-day local windows with `multitaper`, while the bathroom-exhaust case remained weak and inconsistent.
+
+**Visual examples:**
+
+Good anchored match (`fan-iphone-apr20`, `multitaper`):
+
+![Anchored multitaper match for the April 20 iPhone fan sample](docs/images/readme-fan-iphone-multitaper-match.png)
+
+Harder but still window-consistent result (`bedroom-fan-may12-demo`, `multitaper`):
+
+![Multitaper match for the May 12 bedroom fan demo](docs/images/readme-bedroom-fan-multitaper-match.png)
+
 ## Project Structure
 
 ```
 .
 ├── enf_extract.py           # ENF extraction (audio/video → CSV)
 ├── enf_compare.py           # Grid matching (CSV → JSON results)
+├── enf_benchmark.py         # Benchmark harness (case/preset matrix → JSON/CSV summary)
 ├── enf_view.py              # GUI viewer (JSON → overlay display)
 ├── freqgauge_view_csv.py    # CSV viewer for grid reference data
 ├── freqgauge_extract.py     # Extract grid data from FNET images

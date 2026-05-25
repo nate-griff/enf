@@ -20,6 +20,9 @@ import scipy.signal
 
 
 Trace = tuple[np.ndarray, np.ndarray]
+NEUTRAL_SNR_WEIGHT = 1.0
+MAX_LOCAL_SNR_WEIGHT = 1_000.0
+DEFAULT_DP_JUMP_PENALTY = 0.5
 
 
 class MarkExplicitAction(argparse.Action):
@@ -85,9 +88,21 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--harmonic-fusion",
         action=MarkExplicitAction,
         explicit_dest="harmonic_fusion_explicit",
-        choices=("weighted", "vote", "mean"),
+        choices=("weighted", "vote", "mean", "snr-weighted"),
         default="weighted",
         help="Experimental: fusion method for multi-harmonic extraction.",
+    )
+    parser.add_argument(
+        "--tracking-mode",
+        choices=("peak", "dp"),
+        default="peak",
+        help="Per-frame ridge tracking mode (default: peak).",
+    )
+    parser.add_argument(
+        "--spectrum-estimator",
+        choices=("fft", "multitaper"),
+        default="fft",
+        help="Spectrum estimator used within each frame (default: fft).",
     )
     parser.add_argument(
         "--confidence-output",
@@ -246,6 +261,80 @@ def bandpass_filter(
     return scipy.signal.sosfiltfilt(sos, signal)
 
 
+def multitaper_spectrum(
+    frame: np.ndarray,
+    n_padded: int,
+    nw: float = 3.0,
+    k: int = 5,
+) -> np.ndarray:
+    """Estimate a frame spectrum with DPSS multi-taper averaging."""
+    tapers = scipy.signal.windows.dpss(len(frame), nw, Kmax=k, sym=False)
+    power = np.mean(
+        [
+            np.abs(np.fft.rfft(frame * taper, n=n_padded)) ** 2
+            for taper in tapers
+        ],
+        axis=0,
+    )
+    return np.sqrt(power)
+
+
+def estimate_frame_spectrum(
+    frame: np.ndarray,
+    n_padded: int,
+    window: np.ndarray,
+    estimator: str = "fft",
+) -> np.ndarray:
+    """Estimate a frame magnitude spectrum with the requested method."""
+    if estimator == "multitaper":
+        return multitaper_spectrum(frame, n_padded=n_padded)
+    return np.abs(np.fft.rfft(frame * window, n=n_padded))
+
+
+def track_spectral_ridge(
+    scores: np.ndarray, jump_penalty: float = DEFAULT_DP_JUMP_PENALTY
+) -> np.ndarray:
+    """Track a smooth spectral ridge with dynamic programming."""
+    if scores.ndim != 2:
+        raise ValueError("scores must be a 2D array")
+    if scores.shape[0] == 0:
+        return np.array([], dtype=int)
+
+    n_frames, n_bins = scores.shape
+    cost = np.full((n_frames, n_bins), -np.inf, dtype=np.float64)
+    backptr = np.zeros((n_frames, n_bins), dtype=int)
+    cost[0] = scores[0]
+    bin_idx = np.arange(n_bins, dtype=np.float64)
+
+    for frame_idx in range(1, n_frames):
+        jump_cost = jump_penalty * (bin_idx[:, None] - bin_idx[None, :]) ** 2
+        transitions = cost[frame_idx - 1][None, :] - jump_cost
+        best_prev = np.argmax(transitions, axis=1)
+        cost[frame_idx] = scores[frame_idx] + transitions[np.arange(n_bins), best_prev]
+        backptr[frame_idx] = best_prev
+
+    ridge = np.zeros(n_frames, dtype=int)
+    ridge[-1] = int(np.argmax(cost[-1]))
+    for frame_idx in range(n_frames - 2, -1, -1):
+        ridge[frame_idx] = backptr[frame_idx + 1, ridge[frame_idx + 1]]
+
+    return ridge
+
+
+def estimate_local_snr_weight(search_region: np.ndarray, peak_index: int) -> float:
+    """Estimate a positive local harmonic quality weight from nearby bins."""
+    peak_power = float(search_region[peak_index] ** 2)
+    mask = np.ones(len(search_region), dtype=bool)
+    mask[max(0, peak_index - 1) : min(len(search_region), peak_index + 2)] = False
+    noise_samples = search_region[mask]
+    if len(noise_samples) == 0:
+        return NEUTRAL_SNR_WEIGHT
+
+    noise_power = float(np.median(noise_samples**2))
+    weight = peak_power / max(noise_power, 1e-12)
+    return float(np.clip(weight, 1e-6, MAX_LOCAL_SNR_WEIGHT))
+
+
 def qifft_extract(
     signal: np.ndarray,
     sr: int,
@@ -255,8 +344,10 @@ def qifft_extract(
     pad_factor: int,
     bandwidth: float = 0.5,
     harmonic: int = 1,
-) -> tuple[np.ndarray, np.ndarray]:
-    """Run STFT with QIFFT interpolation, return (timestamps, freq_estimates)."""
+    tracking_mode: str = "peak",
+    spectrum_estimator: str = "fft",
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Run STFT with optional ridge tracking, return timestamps, estimates, and quality."""
     target_freq = nominal * harmonic
     frame_len = int(sr * frame_sec)
     hop = int(frame_len * (1 - overlap))
@@ -265,31 +356,91 @@ def qifft_extract(
     window = np.hanning(frame_len)
     n_padded = frame_len * pad_factor
     freq_resolution = sr / n_padded
+    max_bin = n_padded // 2
 
     # Bin range for [target - bandwidth, target + bandwidth] Hz
-    bin_lo = int(np.floor((target_freq - bandwidth) / freq_resolution))
-    bin_hi = int(np.ceil((target_freq + bandwidth) / freq_resolution))
+    bin_lo = max(0, int(np.floor((target_freq - bandwidth) / freq_resolution)))
+    bin_hi = min(max_bin, int(np.ceil((target_freq + bandwidth) / freq_resolution)))
+    expanded_bin_lo = max(0, bin_lo - 1)
+    expanded_bin_hi = min(max_bin, bin_hi + 1)
+    search_region_start = bin_lo - expanded_bin_lo
+    search_region_stop = search_region_start + (bin_hi - bin_lo + 1)
 
     timestamps = np.empty(n_frames)
     freq_estimates = np.empty(n_frames)
+    quality_scores = np.empty(n_frames)
+    expanded_region_len = expanded_bin_hi - expanded_bin_lo + 1
+
+    if tracking_mode == "dp":
+        expanded_regions = np.empty((n_frames, expanded_region_len), dtype=np.float64)
+
+        for i in range(n_frames):
+            start = i * hop
+            frame = signal[start : start + frame_len]
+
+            mag = estimate_frame_spectrum(
+                frame,
+                n_padded=n_padded,
+                window=window,
+                estimator=spectrum_estimator,
+            )
+            expanded_regions[i] = mag[expanded_bin_lo : expanded_bin_hi + 1]
+            timestamps[i] = (start + frame_len / 2) / sr
+
+        search_regions = expanded_regions[:, search_region_start:search_region_stop]
+        frame_rms = np.sqrt(np.mean(search_regions**2, axis=1, keepdims=True))
+        normalized_scores = search_regions / np.maximum(frame_rms, 1e-12)
+        peak_bins = track_spectral_ridge(
+            normalized_scores, jump_penalty=DEFAULT_DP_JUMP_PENALTY
+        )
+
+        for i, k_local in enumerate(peak_bins):
+            expanded_region = expanded_regions[i]
+            search_region = expanded_region[search_region_start:search_region_stop]
+            k_expanded = search_region_start + int(k_local)
+            k = bin_lo + int(k_local)
+
+            # QIFFT quadratic interpolation for sub-bin accuracy
+            if 1 <= k_expanded < len(expanded_region) - 1:
+                alpha = expanded_region[k_expanded - 1]
+                beta = expanded_region[k_expanded]
+                gamma = expanded_region[k_expanded + 1]
+                denom = alpha - 2 * beta + gamma
+                if abs(denom) > 1e-12:
+                    delta = 0.5 * (alpha - gamma) / denom
+                else:
+                    delta = 0.0
+            else:
+                delta = 0.0
+
+            # Divide by harmonic to get fundamental frequency
+            freq_estimates[i] = (k + delta) * freq_resolution / harmonic
+            quality_scores[i] = estimate_local_snr_weight(search_region, int(k_local))
+
+        return timestamps, freq_estimates, quality_scores
 
     for i in range(n_frames):
         start = i * hop
-        frame = signal[start : start + frame_len] * window
+        frame = signal[start : start + frame_len]
 
-        spectrum = np.fft.rfft(frame, n=n_padded)
-        mag = np.abs(spectrum)
-
-        # Find peak bin within the nominal frequency range
-        search_region = mag[bin_lo : bin_hi + 1]
-        k_local = np.argmax(search_region)
+        mag = estimate_frame_spectrum(
+            frame,
+            n_padded=n_padded,
+            window=window,
+            estimator=spectrum_estimator,
+        )
+        timestamps[i] = (start + frame_len / 2) / sr
+        expanded_region = mag[expanded_bin_lo : expanded_bin_hi + 1]
+        search_region = expanded_region[search_region_start:search_region_stop]
+        k_local = int(np.argmax(search_region))
+        k_expanded = search_region_start + k_local
         k = bin_lo + k_local
 
         # QIFFT quadratic interpolation for sub-bin accuracy
-        if 1 <= k < len(mag) - 1:
-            alpha = mag[k - 1]
-            beta = mag[k]
-            gamma = mag[k + 1]
+        if 1 <= k_expanded < len(expanded_region) - 1:
+            alpha = expanded_region[k_expanded - 1]
+            beta = expanded_region[k_expanded]
+            gamma = expanded_region[k_expanded + 1]
             denom = alpha - 2 * beta + gamma
             if abs(denom) > 1e-12:
                 delta = 0.5 * (alpha - gamma) / denom
@@ -300,30 +451,38 @@ def qifft_extract(
 
         # Divide by harmonic to get fundamental frequency
         freq_estimates[i] = (k + delta) * freq_resolution / harmonic
-        timestamps[i] = (start + frame_len / 2) / sr
+        quality_scores[i] = estimate_local_snr_weight(search_region, int(k_local))
 
-    return timestamps, freq_estimates
+    return timestamps, freq_estimates, quality_scores
+
+
+def aggregate_series_to_one_hz(
+    timestamps: np.ndarray,
+    values: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Average values that fall within the same 1-second bin."""
+    if len(timestamps) == 0:
+        return timestamps, values
+
+    max_time = timestamps[-1]
+    n_bins = int(np.floor(max_time)) + 1
+    agg_times = []
+    agg_values = []
+
+    for b in range(n_bins):
+        mask = (timestamps >= b) & (timestamps < b + 1)
+        if np.any(mask):
+            agg_times.append(b + 0.5)
+            agg_values.append(np.mean(values[mask]))
+
+    return np.array(agg_times), np.array(agg_values)
 
 
 def aggregate_to_one_hz(
     timestamps: np.ndarray, freq_estimates: np.ndarray
 ) -> tuple[np.ndarray, np.ndarray]:
     """Average estimates that fall within the same 1-second bin."""
-    if len(timestamps) == 0:
-        return timestamps, freq_estimates
-
-    max_time = timestamps[-1]
-    n_bins = int(np.floor(max_time)) + 1
-    agg_times = []
-    agg_freqs = []
-
-    for b in range(n_bins):
-        mask = (timestamps >= b) & (timestamps < b + 1)
-        if np.any(mask):
-            agg_times.append(b + 0.5)
-            agg_freqs.append(np.mean(freq_estimates[mask]))
-
-    return np.array(agg_times), np.array(agg_freqs)
+    return aggregate_series_to_one_hz(timestamps, freq_estimates)
 
 
 def apply_median_filter(freqs: np.ndarray, window: int) -> np.ndarray:
@@ -346,6 +505,13 @@ def estimate_fusion_confidence(values: np.ndarray) -> float:
 
     spread = float(np.max(values) - np.min(values))
     return max(0.0, min(1.0, 1.0 - (spread / 0.2)))
+
+
+def snr_weight_to_confidence(quality_scores: np.ndarray) -> np.ndarray:
+    """Map positive SNR-like quality weights onto a 0-1 confidence scale."""
+    quality_scores = np.asarray(quality_scores, dtype=np.float64)
+    quality_scores = np.clip(quality_scores, 0.0, None)
+    return quality_scores / (quality_scores + NEUTRAL_SNR_WEIGHT)
 
 
 def harmonic_weight(harmonic: int) -> float:
@@ -419,11 +585,15 @@ def extract_harmonic_trace(
     overlap: float,
     pad_factor: int,
     harmonic: int,
-) -> Trace:
+    tracking_mode: str = "peak",
+    spectrum_estimator: str = "fft",
+    return_quality: bool = False,
+    quality_scale: str = "confidence",
+) -> Trace | tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Extract one harmonic using the existing single-harmonic pipeline."""
     target_freq = nominal * harmonic
     filtered = bandpass_filter(signal, sr, target_freq, bandwidth)
-    timestamps, freq_estimates = qifft_extract(
+    timestamps, freq_estimates, quality_scores = qifft_extract(
         filtered,
         sr,
         nominal,
@@ -432,18 +602,31 @@ def extract_harmonic_trace(
         pad_factor,
         bandwidth,
         harmonic,
+        tracking_mode=tracking_mode,
+        spectrum_estimator=spectrum_estimator,
     )
 
     estimates_per_sec = 1.0 / (frame_sec * (1 - overlap))
     if estimates_per_sec > 1.0:
-        timestamps, freq_estimates = aggregate_to_one_hz(timestamps, freq_estimates)
+        frame_timestamps = timestamps
+        timestamps, freq_estimates = aggregate_to_one_hz(frame_timestamps, freq_estimates)
+        _, quality_scores = aggregate_series_to_one_hz(frame_timestamps, quality_scores)
 
+    if return_quality:
+        if quality_scale == "raw":
+            returned_quality = quality_scores
+        elif quality_scale == "confidence":
+            returned_quality = snr_weight_to_confidence(quality_scores)
+        else:
+            raise ValueError("quality_scale must be 'confidence' or 'raw'")
+        return timestamps, freq_estimates, returned_quality
     return timestamps, freq_estimates
 
 
 def fuse_harmonic_estimates(
     harmonic_traces: Mapping[int, Trace],
     method: str = "weighted",
+    harmonic_quality: Mapping[int, np.ndarray] | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Fuse per-harmonic ENF traces into one trace with confidence scores."""
     available = {
@@ -454,10 +637,15 @@ def fuse_harmonic_estimates(
     if not available:
         return np.array([]), np.array([]), np.array([])
 
-    timestamp_to_values: dict[float, list[tuple[int, float]]] = {}
+    timestamp_to_values: dict[float, list[tuple[int, float, float]]] = {}
     for harmonic, (timestamps, freqs) in available.items():
-        for timestamp, freq in zip(timestamps, freqs):
-            timestamp_to_values.setdefault(float(timestamp), []).append((harmonic, float(freq)))
+        quality = None if harmonic_quality is None else harmonic_quality.get(harmonic)
+        if quality is None or len(quality) != len(freqs):
+            quality = np.ones(len(freqs), dtype=np.float64)
+        for timestamp, freq, snr_weight in zip(timestamps, freqs, quality):
+            timestamp_to_values.setdefault(float(timestamp), []).append(
+                (harmonic, float(freq), float(snr_weight))
+            )
 
     fused_times = []
     fused_freqs = []
@@ -465,15 +653,23 @@ def fuse_harmonic_estimates(
 
     for timestamp in sorted(timestamp_to_values):
         harmonic_values = timestamp_to_values[timestamp]
-        values = np.array([freq for _, freq in harmonic_values], dtype=np.float64)
+        values = np.array([freq for _, freq, _ in harmonic_values], dtype=np.float64)
 
         if method == "mean":
             fused_freq = float(np.mean(values))
         elif method == "vote":
-            fused_freq = vote_fused_frequency(harmonic_values)
+            fused_freq = vote_fused_frequency(
+                [(harmonic, freq) for harmonic, freq, _ in harmonic_values]
+            )
+        elif method == "snr-weighted":
+            weights = np.array(
+                [max(snr_weight, 1e-6) for _, _, snr_weight in harmonic_values],
+                dtype=np.float64,
+            )
+            fused_freq = float(np.average(values, weights=weights))
         else:
             weights = np.array(
-                [harmonic_weight(harmonic) for harmonic, _ in harmonic_values],
+                [harmonic_weight(harmonic) for harmonic, _, _ in harmonic_values],
                 dtype=np.float64,
             )
             fused_freq = float(np.average(values, weights=weights))
@@ -500,10 +696,14 @@ def extract_multi_harmonic(
     harmonics: list[int],
     median_window: int,
     fusion_method: str = "weighted",
+    tracking_mode: str = "peak",
+    spectrum_estimator: str = "fft",
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict[int, Trace]]:
     """Extract and fuse multiple harmonics using the single-harmonic pipeline."""
-    harmonic_traces = {
-        harmonic: extract_harmonic_trace(
+    harmonic_traces: dict[int, Trace] = {}
+    harmonic_quality: dict[int, np.ndarray] = {}
+    for harmonic in harmonics:
+        extracted = extract_harmonic_trace(
             signal,
             sr,
             nominal,
@@ -512,9 +712,18 @@ def extract_multi_harmonic(
             overlap,
             pad_factor,
             harmonic,
+            tracking_mode=tracking_mode,
+            spectrum_estimator=spectrum_estimator,
+            return_quality=fusion_method == "snr-weighted",
+            quality_scale="raw",
         )
-        for harmonic in harmonics
-    }
+        if fusion_method == "snr-weighted":
+            timestamps, freqs, quality_scores = extracted
+            harmonic_traces[harmonic] = (timestamps, freqs)
+            harmonic_quality[harmonic] = quality_scores
+        else:
+            timestamps, freqs = extracted
+            harmonic_traces[harmonic] = (timestamps, freqs)
 
     if median_window > 0:
         harmonic_traces = {
@@ -525,6 +734,7 @@ def extract_multi_harmonic(
     timestamps, fused_freqs, confidence_scores = fuse_harmonic_estimates(
         harmonic_traces,
         method=fusion_method,
+        harmonic_quality=harmonic_quality if fusion_method == "snr-weighted" else None,
     )
     return timestamps, fused_freqs, confidence_scores, harmonic_traces
 
@@ -640,6 +850,8 @@ def main(argv: list[str] | None = None) -> int:
                 supported_harmonics,
                 args.median_window,
                 args.harmonic_fusion,
+                args.tracking_mode,
+                args.spectrum_estimator,
             )
             if args.detail_output:
                 write_detail_csvs(output_path, harmonic_traces)
@@ -655,7 +867,7 @@ def main(argv: list[str] | None = None) -> int:
                     "Requested harmonic is unsupported at this sample rate: "
                     + format_unsupported_harmonics(unsupported_harmonics, sr)
                 )
-            timestamps, freq_estimates = extract_harmonic_trace(
+            extracted = extract_harmonic_trace(
                 signal,
                 sr,
                 args.nominal,
@@ -664,10 +876,15 @@ def main(argv: list[str] | None = None) -> int:
                 args.overlap,
                 args.pad_factor,
                 args.harmonic,
+                args.tracking_mode,
+                args.spectrum_estimator,
+                return_quality=args.confidence_output,
             )
-            freq_estimates = apply_median_filter(freq_estimates, args.median_window)
             if args.confidence_output:
-                confidence_scores = np.ones_like(freq_estimates, dtype=np.float64)
+                timestamps, freq_estimates, confidence_scores = extracted
+            else:
+                timestamps, freq_estimates = extracted
+            freq_estimates = apply_median_filter(freq_estimates, args.median_window)
 
         if figure_output_path is not None:
             try:
