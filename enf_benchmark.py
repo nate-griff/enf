@@ -561,9 +561,9 @@ def prepare_reference_segments(
     grid_dir: Path,
     reference_cache: dict[tuple[str, tuple[str, ...]], list[ec.ReferenceSegment]],
 ) -> list[ec.ReferenceSegment]:
-    cache_key = (case.region, case.comparison_dates)
+    cache_key = (case.region, ())
     if cache_key not in reference_cache:
-        grid = ec.load_grid_data(grid_dir, case.region, list(case.comparison_dates))
+        grid = ec.load_grid_data(grid_dir, case.region, None)
         reference_cache[cache_key] = ec.resample_grid_segments(grid)
     return reference_cache[cache_key]
 

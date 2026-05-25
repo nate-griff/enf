@@ -224,6 +224,7 @@ python enf_benchmark.py --list-techniques
 
 **Built-in behavior:**
 - Uses tracked `sample_data` recordings by default, so a normal checkout can run the harness without authoring a manifest; however, most built-in cases are `.m4a` and therefore need `ffmpeg` on `PATH`
+- Searches across all available dates for the selected grid region; built-in case dates are used afterward to score whether the best blind match landed on the expected day or local window
 - Includes anchored exact-match cases plus harder same-date and date-window cases
 - Writes per-case trace CSVs and comparison JSON artifacts alongside:
   - `benchmark_summary.json`

@@ -161,6 +161,42 @@ class CaseEvaluationTests(unittest.TestCase):
         self.assertTrue(metrics["expected_date_hit"])
 
 
+class ReferencePreparationTests(unittest.TestCase):
+    def test_prepare_reference_segments_searches_all_dates_and_reuses_region_cache(self) -> None:
+        first_case = eb.BenchmarkCase(
+            name="first",
+            description="First case",
+            input_path=Path("sample_data\\audio_samples\\first.wav"),
+            region="EI",
+            comparison_dates=("2026-04-20",),
+        )
+        second_case = eb.BenchmarkCase(
+            name="second",
+            description="Second case",
+            input_path=Path("sample_data\\audio_samples\\second.wav"),
+            region="EI",
+            comparison_dates=("2026-05-11",),
+        )
+        sentinel_segments = [mock.sentinel.segment]
+        cache = {}
+
+        with (
+            mock.patch.object(eb.ec, "load_grid_data", return_value=mock.sentinel.grid) as load_grid_data,
+            mock.patch.object(
+                eb.ec,
+                "resample_grid_segments",
+                return_value=sentinel_segments,
+            ) as resample_grid_segments,
+        ):
+            first = eb.prepare_reference_segments(first_case, Path("source_data\\grid_data"), cache)
+            second = eb.prepare_reference_segments(second_case, Path("source_data\\grid_data"), cache)
+
+        self.assertIs(first, sentinel_segments)
+        self.assertIs(second, sentinel_segments)
+        load_grid_data.assert_called_once_with(Path("source_data\\grid_data"), "EI", None)
+        resample_grid_segments.assert_called_once_with(mock.sentinel.grid)
+
+
 class SummaryWritingTests(unittest.TestCase):
     def test_write_summary_files_outputs_machine_readable_json_and_csv(self) -> None:
         summary = {
