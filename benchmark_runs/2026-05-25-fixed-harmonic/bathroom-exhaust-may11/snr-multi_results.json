@@ -1,0 +1,53 @@
+{
+  "trace_file": "benchmark_runs\\2026-05-25-fixed-harmonic\\bathroom-exhaust-may11\\snr-multi_trace.csv",
+  "region": "EI",
+  "threshold_hz": 0.01,
+  "query_length_seconds": 316,
+  "matches": [
+    {
+      "rank": 1,
+      "ref_start_utc": "2026-04-25T17:13:49+00:00",
+      "ref_end_utc": "2026-04-25T17:19:04+00:00",
+      "correlation": 0.349268,
+      "threshold_coverage": 0.316456,
+      "composite_score": 0.329581,
+      "ref_offset_index": 961
+    },
+    {
+      "rank": 2,
+      "ref_start_utc": "2026-05-05T08:02:02+00:00",
+      "ref_end_utc": "2026-05-05T08:07:17+00:00",
+      "correlation": 0.387435,
+      "threshold_coverage": 0.287975,
+      "composite_score": 0.327759,
+      "ref_offset_index": 871
+    },
+    {
+      "rank": 3,
+      "ref_start_utc": "2026-05-12T05:44:48+00:00",
+      "ref_end_utc": "2026-05-12T05:50:03+00:00",
+      "correlation": 0.342134,
+      "threshold_coverage": 0.313291,
+      "composite_score": 0.324828,
+      "ref_offset_index": 1424
+    },
+    {
+      "rank": 4,
+      "ref_start_utc": "2026-04-24T00:40:46+00:00",
+      "ref_end_utc": "2026-04-24T00:46:01+00:00",
+      "correlation": 0.333893,
+      "threshold_coverage": 0.316456,
+      "composite_score": 0.323431,
+      "ref_offset_index": 2438
+    },
+    {
+      "rank": 5,
+      "ref_start_utc": "2026-04-17T03:36:38+00:00",
+      "ref_end_utc": "2026-04-17T03:41:53+00:00",
+      "correlation": 0.341603,
+      "threshold_coverage": 0.310127,
+      "composite_score": 0.322717,
+      "ref_offset_index": 2083
+    }
+  ]
+}

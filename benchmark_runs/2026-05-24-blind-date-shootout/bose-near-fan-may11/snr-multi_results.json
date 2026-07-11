@@ -1,0 +1,53 @@
+{
+  "trace_file": "benchmark_runs\\2026-05-24-blind-date-shootout\\bose-near-fan-may11\\snr-multi_trace.csv",
+  "region": "EI",
+  "threshold_hz": 0.01,
+  "query_length_seconds": 277,
+  "matches": [
+    {
+      "rank": 1,
+      "ref_start_utc": "2026-04-22T19:23:56+00:00",
+      "ref_end_utc": "2026-04-22T19:28:32+00:00",
+      "correlation": 0.359976,
+      "threshold_coverage": 0.133574,
+      "composite_score": 0.224135,
+      "ref_offset_index": 295
+    },
+    {
+      "rank": 2,
+      "ref_start_utc": "2026-04-08T10:38:21+00:00",
+      "ref_end_utc": "2026-04-08T10:42:57+00:00",
+      "correlation": 0.382473,
+      "threshold_coverage": 0.115523,
+      "composite_score": 0.222303,
+      "ref_offset_index": 29
+    },
+    {
+      "rank": 3,
+      "ref_start_utc": "2026-04-14T21:41:02+00:00",
+      "ref_end_utc": "2026-04-14T21:45:38+00:00",
+      "correlation": 0.31285,
+      "threshold_coverage": 0.148014,
+      "composite_score": 0.213949,
+      "ref_offset_index": 1539
+    },
+    {
+      "rank": 4,
+      "ref_start_utc": "2026-04-12T18:14:02+00:00",
+      "ref_end_utc": "2026-04-12T18:18:38+00:00",
+      "correlation": 0.293721,
+      "threshold_coverage": 0.158845,
+      "composite_score": 0.212795,
+      "ref_offset_index": 406
+    },
+    {
+      "rank": 5,
+      "ref_start_utc": "2026-05-07T03:12:58+00:00",
+      "ref_end_utc": "2026-05-07T03:17:34+00:00",
+      "correlation": 0.260287,
+      "threshold_coverage": 0.176895,
+      "composite_score": 0.210252,
+      "ref_offset_index": 394
+    }
+  ]
+}

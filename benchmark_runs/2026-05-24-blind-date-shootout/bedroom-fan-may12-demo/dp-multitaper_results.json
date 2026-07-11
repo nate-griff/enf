@@ -1,0 +1,53 @@
+{
+  "trace_file": "benchmark_runs\\2026-05-24-blind-date-shootout\\bedroom-fan-may12-demo\\dp-multitaper_trace.csv",
+  "region": "EI",
+  "threshold_hz": 0.01,
+  "query_length_seconds": 1029,
+  "matches": [
+    {
+      "rank": 1,
+      "ref_start_utc": "2026-05-12T18:01:53+00:00",
+      "ref_end_utc": "2026-05-12T18:19:01+00:00",
+      "correlation": 0.708639,
+      "threshold_coverage": 0.376093,
+      "composite_score": 0.509112,
+      "ref_offset_index": 112
+    },
+    {
+      "rank": 2,
+      "ref_start_utc": "2026-05-12T18:01:59+00:00",
+      "ref_end_utc": "2026-05-12T18:19:07+00:00",
+      "correlation": 0.677392,
+      "threshold_coverage": 0.358601,
+      "composite_score": 0.486117,
+      "ref_offset_index": 118
+    },
+    {
+      "rank": 3,
+      "ref_start_utc": "2026-05-12T18:01:47+00:00",
+      "ref_end_utc": "2026-05-12T18:18:55+00:00",
+      "correlation": 0.671291,
+      "threshold_coverage": 0.347911,
+      "composite_score": 0.477263,
+      "ref_offset_index": 106
+    },
+    {
+      "rank": 4,
+      "ref_start_utc": "2026-04-08T10:06:53+00:00",
+      "ref_end_utc": "2026-04-08T10:24:01+00:00",
+      "correlation": 0.505546,
+      "threshold_coverage": 0.413994,
+      "composite_score": 0.450615,
+      "ref_offset_index": 450
+    },
+    {
+      "rank": 5,
+      "ref_start_utc": "2026-05-02T22:17:57+00:00",
+      "ref_end_utc": "2026-05-02T22:35:05+00:00",
+      "correlation": 0.524169,
+      "threshold_coverage": 0.391642,
+      "composite_score": 0.444653,
+      "ref_offset_index": 3350
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "trace_file": "benchmark_runs\\2026-05-24-blind-date-shootout\\fan-iphone-apr20\\multitaper_trace.csv",
+  "region": "EI",
+  "threshold_hz": 0.01,
+  "query_length_seconds": 340,
+  "matches": [
+    {
+      "rank": 1,
+      "ref_start_utc": "2026-04-20T16:36:06+00:00",
+      "ref_end_utc": "2026-04-20T16:41:45+00:00",
+      "correlation": 0.747959,
+      "threshold_coverage": 0.570588,
+      "composite_score": 0.641537,
+      "ref_offset_index": 554
+    },
+    {
+      "rank": 2,
+      "ref_start_utc": "2026-04-20T23:37:15+00:00",
+      "ref_end_utc": "2026-04-20T23:42:54+00:00",
+      "correlation": 0.664917,
+      "threshold_coverage": 0.623529,
+      "composite_score": 0.640084,
+      "ref_offset_index": 2269
+    },
+    {
+      "rank": 3,
+      "ref_start_utc": "2026-03-30T07:30:34+00:00",
+      "ref_end_utc": "2026-03-30T07:36:13+00:00",
+      "correlation": 0.6232,
+      "threshold_coverage": 0.65,
+      "composite_score": 0.63928,
+      "ref_offset_index": 104
+    },
+    {
+      "rank": 4,
+      "ref_start_utc": "2026-04-08T23:33:10+00:00",
+      "ref_end_utc": "2026-04-08T23:38:49+00:00",
+      "correlation": 0.650958,
+      "threshold_coverage": 0.629412,
+      "composite_score": 0.63803,
+      "ref_offset_index": 2969
+    },
+    {
+      "rank": 5,
+      "ref_start_utc": "2026-05-09T09:45:12+00:00",
+      "ref_end_utc": "2026-05-09T09:50:51+00:00",
+      "correlation": 0.6388,
+      "threshold_coverage": 0.623529,
+      "composite_score": 0.629638,
+      "ref_offset_index": 1936
+    }
+  ]
+}

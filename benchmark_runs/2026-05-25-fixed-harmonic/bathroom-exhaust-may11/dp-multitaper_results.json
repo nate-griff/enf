@@ -1,0 +1,53 @@
+{
+  "trace_file": "benchmark_runs\\2026-05-25-fixed-harmonic\\bathroom-exhaust-may11\\dp-multitaper_trace.csv",
+  "region": "EI",
+  "threshold_hz": 0.01,
+  "query_length_seconds": 316,
+  "matches": [
+    {
+      "rank": 1,
+      "ref_start_utc": "2026-04-29T13:07:35+00:00",
+      "ref_end_utc": "2026-04-29T13:12:50+00:00",
+      "correlation": 0.3547,
+      "threshold_coverage": 0.367089,
+      "composite_score": 0.362133,
+      "ref_offset_index": 396
+    },
+    {
+      "rank": 2,
+      "ref_start_utc": "2026-04-13T08:31:09+00:00",
+      "ref_end_utc": "2026-04-13T08:36:24+00:00",
+      "correlation": 0.349548,
+      "threshold_coverage": 0.370253,
+      "composite_score": 0.361971,
+      "ref_offset_index": 109
+    },
+    {
+      "rank": 3,
+      "ref_start_utc": "2026-03-31T10:16:08+00:00",
+      "ref_end_utc": "2026-03-31T10:21:23+00:00",
+      "correlation": 0.356799,
+      "threshold_coverage": 0.363924,
+      "composite_score": 0.361074,
+      "ref_offset_index": 2179
+    },
+    {
+      "rank": 4,
+      "ref_start_utc": "2026-04-03T18:42:50+00:00",
+      "ref_end_utc": "2026-04-03T18:48:05+00:00",
+      "correlation": 0.344034,
+      "threshold_coverage": 0.370253,
+      "composite_score": 0.359766,
+      "ref_offset_index": 1044
+    },
+    {
+      "rank": 5,
+      "ref_start_utc": "2026-05-05T04:47:37+00:00",
+      "ref_end_utc": "2026-05-05T04:52:52+00:00",
+      "correlation": 0.357989,
+      "threshold_coverage": 0.357595,
+      "composite_score": 0.357753,
+      "ref_offset_index": 2446
+    }
+  ]
+}

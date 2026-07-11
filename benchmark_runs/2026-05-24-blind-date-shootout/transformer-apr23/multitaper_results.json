@@ -1,0 +1,53 @@
+{
+  "trace_file": "benchmark_runs\\2026-05-24-blind-date-shootout\\transformer-apr23\\multitaper_trace.csv",
+  "region": "EI",
+  "threshold_hz": 0.01,
+  "query_length_seconds": 121,
+  "matches": [
+    {
+      "rank": 1,
+      "ref_start_utc": "2026-03-31T07:10:58+00:00",
+      "ref_end_utc": "2026-03-31T07:12:58+00:00",
+      "correlation": 0.621606,
+      "threshold_coverage": 0.694215,
+      "composite_score": 0.665171,
+      "ref_offset_index": 2350
+    },
+    {
+      "rank": 2,
+      "ref_start_utc": "2026-04-04T16:01:06+00:00",
+      "ref_end_utc": "2026-04-04T16:03:06+00:00",
+      "correlation": 0.486247,
+      "threshold_coverage": 0.743802,
+      "composite_score": 0.64078,
+      "ref_offset_index": 574
+    },
+    {
+      "rank": 3,
+      "ref_start_utc": "2026-04-04T00:24:27+00:00",
+      "ref_end_utc": "2026-04-04T00:26:27+00:00",
+      "correlation": 0.436565,
+      "threshold_coverage": 0.768595,
+      "composite_score": 0.635783,
+      "ref_offset_index": 100
+    },
+    {
+      "rank": 4,
+      "ref_start_utc": "2026-05-11T15:27:03+00:00",
+      "ref_end_utc": "2026-05-11T15:29:03+00:00",
+      "correlation": 0.414862,
+      "threshold_coverage": 0.77686,
+      "composite_score": 0.63206,
+      "ref_offset_index": 1531
+    },
+    {
+      "rank": 5,
+      "ref_start_utc": "2026-04-05T06:50:54+00:00",
+      "ref_end_utc": "2026-04-05T06:52:54+00:00",
+      "correlation": 0.483054,
+      "threshold_coverage": 0.719008,
+      "composite_score": 0.624627,
+      "ref_offset_index": 265
+    }
+  ]
+}

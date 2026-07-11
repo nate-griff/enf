@@ -1,0 +1,53 @@
+{
+  "trace_file": "benchmark_runs\\2026-05-25-fixed-harmonic\\dfor661-apr20\\multitaper_trace.csv",
+  "region": "EI",
+  "threshold_hz": 0.01,
+  "query_length_seconds": 422,
+  "matches": [
+    {
+      "rank": 1,
+      "ref_start_utc": "2026-05-02T03:41:14+00:00",
+      "ref_end_utc": "2026-05-02T03:48:15+00:00",
+      "correlation": 0.719843,
+      "threshold_coverage": 0.779621,
+      "composite_score": 0.75571,
+      "ref_offset_index": 2697
+    },
+    {
+      "rank": 2,
+      "ref_start_utc": "2026-05-02T03:41:21+00:00",
+      "ref_end_utc": "2026-05-02T03:48:22+00:00",
+      "correlation": 0.7063,
+      "threshold_coverage": 0.744076,
+      "composite_score": 0.728966,
+      "ref_offset_index": 2704
+    },
+    {
+      "rank": 3,
+      "ref_start_utc": "2026-05-02T03:41:07+00:00",
+      "ref_end_utc": "2026-05-02T03:48:08+00:00",
+      "correlation": 0.697272,
+      "threshold_coverage": 0.744076,
+      "composite_score": 0.725354,
+      "ref_offset_index": 2690
+    },
+    {
+      "rank": 4,
+      "ref_start_utc": "2026-05-02T03:34:32+00:00",
+      "ref_end_utc": "2026-05-02T03:41:33+00:00",
+      "correlation": 0.68911,
+      "threshold_coverage": 0.71564,
+      "composite_score": 0.705028,
+      "ref_offset_index": 2295
+    },
+    {
+      "rank": 5,
+      "ref_start_utc": "2026-05-04T06:32:35+00:00",
+      "ref_end_utc": "2026-05-04T06:39:36+00:00",
+      "correlation": 0.681252,
+      "threshold_coverage": 0.7109,
+      "composite_score": 0.699041,
+      "ref_offset_index": 468
+    }
+  ]
+}

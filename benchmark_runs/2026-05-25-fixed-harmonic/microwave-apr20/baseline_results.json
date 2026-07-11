@@ -1,0 +1,53 @@
+{
+  "trace_file": "benchmark_runs\\2026-05-25-fixed-harmonic\\microwave-apr20\\baseline_trace.csv",
+  "region": "EI",
+  "threshold_hz": 0.01,
+  "query_length_seconds": 243,
+  "matches": [
+    {
+      "rank": 1,
+      "ref_start_utc": "2026-05-02T15:48:26+00:00",
+      "ref_end_utc": "2026-05-02T15:52:28+00:00",
+      "correlation": 0.611873,
+      "threshold_coverage": 0.27572,
+      "composite_score": 0.410181,
+      "ref_offset_index": 2125
+    },
+    {
+      "rank": 2,
+      "ref_start_utc": "2026-04-19T04:52:26+00:00",
+      "ref_end_utc": "2026-04-19T04:56:28+00:00",
+      "correlation": 0.609624,
+      "threshold_coverage": 0.255144,
+      "composite_score": 0.396936,
+      "ref_offset_index": 214
+    },
+    {
+      "rank": 3,
+      "ref_start_utc": "2026-04-10T22:56:11+00:00",
+      "ref_end_utc": "2026-04-10T23:00:13+00:00",
+      "correlation": 0.553234,
+      "threshold_coverage": 0.292181,
+      "composite_score": 0.396602,
+      "ref_offset_index": 2192
+    },
+    {
+      "rank": 4,
+      "ref_start_utc": "2026-03-28T19:47:30+00:00",
+      "ref_end_utc": "2026-03-28T19:51:32+00:00",
+      "correlation": 0.523449,
+      "threshold_coverage": 0.304527,
+      "composite_score": 0.392096,
+      "ref_offset_index": 1421
+    },
+    {
+      "rank": 5,
+      "ref_start_utc": "2026-03-21T09:37:59+00:00",
+      "ref_end_utc": "2026-03-21T09:42:01+00:00",
+      "correlation": 0.523406,
+      "threshold_coverage": 0.304527,
+      "composite_score": 0.392078,
+      "ref_offset_index": 522
+    }
+  ]
+}

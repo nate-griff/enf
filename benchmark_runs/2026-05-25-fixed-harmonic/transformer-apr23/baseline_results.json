@@ -1,0 +1,53 @@
+{
+  "trace_file": "benchmark_runs\\2026-05-25-fixed-harmonic\\transformer-apr23\\baseline_trace.csv",
+  "region": "EI",
+  "threshold_hz": 0.01,
+  "query_length_seconds": 121,
+  "matches": [
+    {
+      "rank": 1,
+      "ref_start_utc": "2026-03-27T14:15:30+00:00",
+      "ref_end_utc": "2026-03-27T14:17:30+00:00",
+      "correlation": 0.401816,
+      "threshold_coverage": 0.628099,
+      "composite_score": 0.537586,
+      "ref_offset_index": 1842
+    },
+    {
+      "rank": 2,
+      "ref_start_utc": "2026-04-23T12:02:25+00:00",
+      "ref_end_utc": "2026-04-23T12:04:25+00:00",
+      "correlation": 0.371764,
+      "threshold_coverage": 0.644628,
+      "composite_score": 0.535482,
+      "ref_offset_index": 214
+    },
+    {
+      "rank": 3,
+      "ref_start_utc": "2026-04-03T16:35:57+00:00",
+      "ref_end_utc": "2026-04-03T16:37:57+00:00",
+      "correlation": 0.46646,
+      "threshold_coverage": 0.570248,
+      "composite_score": 0.528733,
+      "ref_offset_index": 326
+    },
+    {
+      "rank": 4,
+      "ref_start_utc": "2026-05-02T11:49:26+00:00",
+      "ref_end_utc": "2026-05-02T11:51:26+00:00",
+      "correlation": 0.334048,
+      "threshold_coverage": 0.652893,
+      "composite_score": 0.525355,
+      "ref_offset_index": 1410
+    },
+    {
+      "rank": 5,
+      "ref_start_utc": "2026-04-18T07:36:03+00:00",
+      "ref_end_utc": "2026-04-18T07:38:03+00:00",
+      "correlation": 0.430482,
+      "threshold_coverage": 0.586777,
+      "composite_score": 0.524259,
+      "ref_offset_index": 120
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "trace_file": "benchmark_runs\\2026-05-24-blind-date-shootout\\bathroom-exhaust-may11\\multitaper_trace.csv",
+  "region": "EI",
+  "threshold_hz": 0.01,
+  "query_length_seconds": 316,
+  "matches": [
+    {
+      "rank": 1,
+      "ref_start_utc": "2026-04-21T02:04:50+00:00",
+      "ref_end_utc": "2026-04-21T02:10:05+00:00",
+      "correlation": 0.478279,
+      "threshold_coverage": 0.503165,
+      "composite_score": 0.49321,
+      "ref_offset_index": 11124
+    },
+    {
+      "rank": 2,
+      "ref_start_utc": "2026-03-22T20:05:48+00:00",
+      "ref_end_utc": "2026-03-22T20:11:03+00:00",
+      "correlation": 0.431105,
+      "threshold_coverage": 0.522152,
+      "composite_score": 0.485733,
+      "ref_offset_index": 242
+    },
+    {
+      "rank": 3,
+      "ref_start_utc": "2026-04-13T23:28:49+00:00",
+      "ref_end_utc": "2026-04-13T23:34:04+00:00",
+      "correlation": 0.433695,
+      "threshold_coverage": 0.518987,
+      "composite_score": 0.48487,
+      "ref_offset_index": 582
+    },
+    {
+      "rank": 4,
+      "ref_start_utc": "2026-05-09T02:23:36+00:00",
+      "ref_end_utc": "2026-05-09T02:28:51+00:00",
+      "correlation": 0.394372,
+      "threshold_coverage": 0.541139,
+      "composite_score": 0.482432,
+      "ref_offset_index": 1221
+    },
+    {
+      "rank": 5,
+      "ref_start_utc": "2026-03-28T02:26:56+00:00",
+      "ref_end_utc": "2026-03-28T02:32:11+00:00",
+      "correlation": 0.402743,
+      "threshold_coverage": 0.53481,
+      "composite_score": 0.481983,
+      "ref_offset_index": 4398
+    }
+  ]
+}

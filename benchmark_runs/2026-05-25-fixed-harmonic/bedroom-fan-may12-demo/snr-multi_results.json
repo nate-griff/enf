@@ -1,0 +1,53 @@
+{
+  "trace_file": "benchmark_runs\\2026-05-25-fixed-harmonic\\bedroom-fan-may12-demo\\snr-multi_trace.csv",
+  "region": "EI",
+  "threshold_hz": 0.01,
+  "query_length_seconds": 1029,
+  "matches": [
+    {
+      "rank": 1,
+      "ref_start_utc": "2026-05-08T04:05:56+00:00",
+      "ref_end_utc": "2026-05-08T04:23:04+00:00",
+      "correlation": 0.193553,
+      "threshold_coverage": 0.176871,
+      "composite_score": 0.183544,
+      "ref_offset_index": 1775
+    },
+    {
+      "rank": 2,
+      "ref_start_utc": "2026-05-07T11:47:24+00:00",
+      "ref_end_utc": "2026-05-07T12:04:32+00:00",
+      "correlation": 0.173118,
+      "threshold_coverage": 0.176871,
+      "composite_score": 0.17537,
+      "ref_offset_index": 1334
+    },
+    {
+      "rank": 3,
+      "ref_start_utc": "2026-04-18T01:50:32+00:00",
+      "ref_end_utc": "2026-04-18T02:07:40+00:00",
+      "correlation": 0.168462,
+      "threshold_coverage": 0.176871,
+      "composite_score": 0.173507,
+      "ref_offset_index": 1051
+    },
+    {
+      "rank": 4,
+      "ref_start_utc": "2026-05-08T04:05:50+00:00",
+      "ref_end_utc": "2026-05-08T04:22:58+00:00",
+      "correlation": 0.169222,
+      "threshold_coverage": 0.168124,
+      "composite_score": 0.168563,
+      "ref_offset_index": 1769
+    },
+    {
+      "rank": 5,
+      "ref_start_utc": "2026-03-23T19:17:09+00:00",
+      "ref_end_utc": "2026-03-23T19:34:17+00:00",
+      "correlation": 0.175305,
+      "threshold_coverage": 0.161322,
+      "composite_score": 0.166915,
+      "ref_offset_index": 2955
+    }
+  ]
+}

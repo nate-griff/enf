@@ -1,0 +1,53 @@
+{
+  "trace_file": "benchmark_runs\\2026-05-25-fixed-harmonic\\bose-near-fan-may11\\baseline_trace.csv",
+  "region": "EI",
+  "threshold_hz": 0.01,
+  "query_length_seconds": 277,
+  "matches": [
+    {
+      "rank": 1,
+      "ref_start_utc": "2026-03-21T17:46:44+00:00",
+      "ref_end_utc": "2026-03-21T17:51:20+00:00",
+      "correlation": 0.483367,
+      "threshold_coverage": 0.837545,
+      "composite_score": 0.695874,
+      "ref_offset_index": 6500
+    },
+    {
+      "rank": 2,
+      "ref_start_utc": "2026-03-28T04:41:34+00:00",
+      "ref_end_utc": "2026-03-28T04:46:10+00:00",
+      "correlation": 0.473064,
+      "threshold_coverage": 0.801444,
+      "composite_score": 0.670092,
+      "ref_offset_index": 2461
+    },
+    {
+      "rank": 3,
+      "ref_start_utc": "2026-04-19T20:46:30+00:00",
+      "ref_end_utc": "2026-04-19T20:51:06+00:00",
+      "correlation": 0.414778,
+      "threshold_coverage": 0.823105,
+      "composite_score": 0.659774,
+      "ref_offset_index": 1748
+    },
+    {
+      "rank": 4,
+      "ref_start_utc": "2026-04-20T10:03:23+00:00",
+      "ref_end_utc": "2026-04-20T10:07:59+00:00",
+      "correlation": 0.447421,
+      "threshold_coverage": 0.790614,
+      "composite_score": 0.653337,
+      "ref_offset_index": 461
+    },
+    {
+      "rank": 5,
+      "ref_start_utc": "2026-03-28T04:41:40+00:00",
+      "ref_end_utc": "2026-03-28T04:46:16+00:00",
+      "correlation": 0.482834,
+      "threshold_coverage": 0.758123,
+      "composite_score": 0.648007,
+      "ref_offset_index": 2467
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "trace_file": "benchmark_runs\\2026-05-25-fixed-harmonic\\bose-near-fan-may11\\dp-multitaper_trace.csv",
+  "region": "EI",
+  "threshold_hz": 0.01,
+  "query_length_seconds": 277,
+  "matches": [
+    {
+      "rank": 1,
+      "ref_start_utc": "2026-05-03T07:14:32+00:00",
+      "ref_end_utc": "2026-05-03T07:19:08+00:00",
+      "correlation": 0.877197,
+      "threshold_coverage": 0.833935,
+      "composite_score": 0.85124,
+      "ref_offset_index": 8005
+    },
+    {
+      "rank": 2,
+      "ref_start_utc": "2026-03-21T17:46:42+00:00",
+      "ref_end_utc": "2026-03-21T17:51:18+00:00",
+      "correlation": 0.843901,
+      "threshold_coverage": 0.851986,
+      "composite_score": 0.848752,
+      "ref_offset_index": 6498
+    },
+    {
+      "rank": 3,
+      "ref_start_utc": "2026-05-03T07:14:22+00:00",
+      "ref_end_utc": "2026-05-03T07:18:58+00:00",
+      "correlation": 0.839605,
+      "threshold_coverage": 0.841155,
+      "composite_score": 0.840535,
+      "ref_offset_index": 7995
+    },
+    {
+      "rank": 4,
+      "ref_start_utc": "2026-04-10T16:03:55+00:00",
+      "ref_end_utc": "2026-04-10T16:08:31+00:00",
+      "correlation": 0.860317,
+      "threshold_coverage": 0.812274,
+      "composite_score": 0.831491,
+      "ref_offset_index": 2280
+    },
+    {
+      "rank": 5,
+      "ref_start_utc": "2026-04-19T20:46:18+00:00",
+      "ref_end_utc": "2026-04-19T20:50:54+00:00",
+      "correlation": 0.832162,
+      "threshold_coverage": 0.823105,
+      "composite_score": 0.826728,
+      "ref_offset_index": 1736
+    }
+  ]
+}

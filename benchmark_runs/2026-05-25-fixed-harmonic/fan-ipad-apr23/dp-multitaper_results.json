@@ -1,0 +1,53 @@
+{
+  "trace_file": "benchmark_runs\\2026-05-25-fixed-harmonic\\fan-ipad-apr23\\dp-multitaper_trace.csv",
+  "region": "EI",
+  "threshold_hz": 0.01,
+  "query_length_seconds": 662,
+  "matches": [
+    {
+      "rank": 1,
+      "ref_start_utc": "2026-04-23T16:18:34+00:00",
+      "ref_end_utc": "2026-04-23T16:29:35+00:00",
+      "correlation": 0.323934,
+      "threshold_coverage": 0.515106,
+      "composite_score": 0.438637,
+      "ref_offset_index": 326
+    },
+    {
+      "rank": 2,
+      "ref_start_utc": "2026-04-23T16:18:40+00:00",
+      "ref_end_utc": "2026-04-23T16:29:41+00:00",
+      "correlation": 0.335051,
+      "threshold_coverage": 0.489426,
+      "composite_score": 0.427676,
+      "ref_offset_index": 332
+    },
+    {
+      "rank": 3,
+      "ref_start_utc": "2026-04-23T16:18:28+00:00",
+      "ref_end_utc": "2026-04-23T16:29:29+00:00",
+      "correlation": 0.285956,
+      "threshold_coverage": 0.468278,
+      "composite_score": 0.395349,
+      "ref_offset_index": 320
+    },
+    {
+      "rank": 4,
+      "ref_start_utc": "2026-03-31T00:29:52+00:00",
+      "ref_end_utc": "2026-03-31T00:40:53+00:00",
+      "correlation": 0.227324,
+      "threshold_coverage": 0.492447,
+      "composite_score": 0.386398,
+      "ref_offset_index": 1955
+    },
+    {
+      "rank": 5,
+      "ref_start_utc": "2026-03-22T01:06:24+00:00",
+      "ref_end_utc": "2026-03-22T01:17:25+00:00",
+      "correlation": 0.28184,
+      "threshold_coverage": 0.44713,
+      "composite_score": 0.381014,
+      "ref_offset_index": 12
+    }
+  ]
+}
